@@ -1,0 +1,38 @@
+edutech_api/
+├── main.py                   # Điểm khởi chạy FastAPI
+├── config.py                 # Cấu hình ứng dụng
+├── database.py               # Kết nối SQLAlchemy
+├── models/
+│   ├── __init__.py
+│   ├── user.py               # Model Người dùng
+│   ├── category.py           # Model Danh mục
+│   ├── lesson.py             # Model Bài học
+│   ├── document.py           # Model Tài liệu
+│   ├── note.py               # Model Ghi chú
+│   ├── highlight.py          # Model Đánh dấu
+│   ├── quiz.py               # Model Bài kiểm tra
+│   └── question.py           # Model Câu hỏi
+├── schemas/
+│   ├── __init__.py
+│   ├── user.py               # Pydantic schemas cho User
+│   ├── category.py           # Pydantic schemas cho Category
+│   ├── lesson.py             # Pydantic schemas cho Lesson
+│   ├── document.py           # Pydantic schemas cho Document
+│   ├── note.py               # Pydantic schemas cho Note
+│   ├── highlight.py          # Pydantic schemas cho Highlight
+│   ├── quiz.py               # Pydantic schemas cho Quiz
+│   ├── question.py           # Pydantic schemas cho Question
+│   └── token.py              # Pydantic schemas cho JWT
+├── routers/
+│   ├── __init__.py
+│   ├── auth.py               # Xác thực người dùng
+│   ├── category.py           # CRUD cho danh mục
+│   ├── lesson.py             # CRUD cho bài học
+│   ├── note.py               # CRUD cho ghi chú
+│   ├── highlight.py          # CRUD cho đánh dấu
+│   ├── quiz.py               # CRUD cho bài kiểm tra
+│   └── question.py           # CRUD cho câu hỏi
+└── utils/
+    ├── __init__.py
+    ├── auth.py               # Tiện ích xác thực
+    └── dependencies.py       # FastAPI dependencies
