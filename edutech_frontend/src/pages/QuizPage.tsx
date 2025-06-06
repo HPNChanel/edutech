@@ -1,341 +1,578 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Button,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormControl,
-  Stack,
-  LinearProgress,
-  Divider,
-  Alert,
-  Card,
-  CardContent,
-  Grid
-} from '@mui/material'
-import {
-  ArrowBack,
-  ArrowForward,
-  Check,
-  Close,
-  Refresh
-} from '@mui/icons-material'
-import { quizService } from '../services/quizService'
-import { lessonService } from '../services/lessonService'
-import type { QuizQuestion, Lesson } from '../types/lesson'
-import Layout from '../components/Layout'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { useToast } from '@/hooks/use-toast'
+import { 
+  quizService, 
+  Quiz, 
+  QuizAttempt, 
+  QuizQuestion,
+  SubmitQuizData,
+  StartQuizData 
+} from '@/services/quizService'
+import { 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  RotateCcw,
+  ArrowLeft,
+  ArrowRight,
+  Trophy,
+  Target,
+  RefreshCw,
+  AlertTriangle,
+  FileX,
+  BookOpen
+} from 'lucide-react'
 
-const QuizPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const [questions, setQuestions] = useState<QuizQuestion[]>([])
-  const [lesson, setLesson] = useState<Lesson | null>(null)
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState<string>('')
-  const [isSubmitted, setIsSubmitted] = useState(false)
-  const [score, setScore] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [quizCompleted, setQuizCompleted] = useState(false)
-  const [answerLoading, setAnswerLoading] = useState(false)
-
-  useEffect(() => {
-    const fetchQuizData = async () => {
-      if (!id) return
-      
-      try {
-        // Fetch questions for this lesson
-        const questionsData = await quizService.getQuestionsByLessonId(parseInt(id))
-        setQuestions(questionsData)
-        
-        // Fetch lesson details
-        const lessonData = await lessonService.getById(parseInt(id))
-        setLesson(lessonData)
-      } catch (err: any) {
-        setError(err.message || 'Failed to load quiz')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchQuizData()
-  }, [id])
-
-  const handleAnswerSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedAnswer(event.target.value)
-  }
-
-  const handleSubmitAnswer = async () => {
-    if (!selectedAnswer) return
-    
-    setAnswerLoading(true)
-    try {
-      const currentQ = questions[currentQuestion]
-      const result = await quizService.submitQuizAnswer(currentQ.id, selectedAnswer)
-      
-      if (result.isCorrect) {
-        setScore(score + 1)
-      }
-      
-      setIsSubmitted(true)
-    } catch (error) {
-      setError('Failed to check answer. Please try again.')
-      console.error(error)
-    } finally {
-      setAnswerLoading(false)
-    }
-  }
-
-  const handleNextQuestion = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
-      setSelectedAnswer('')
-      setIsSubmitted(false)
-    } else {
-      setQuizCompleted(true)
-    }
-  }
-
-  const handlePrevQuestion = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1)
-      setSelectedAnswer('')
-      setIsSubmitted(false)
-    }
-  }
-
-  const handleRestartQuiz = () => {
-    setCurrentQuestion(0)
-    setSelectedAnswer('')
-    setIsSubmitted(false)
-    setScore(0)
-    setQuizCompleted(false)
-  }
-
-  if (loading) {
-    return (
-      <Layout>
-        <Container>
-          <LinearProgress />
-          <Typography sx={{ mt: 2 }}>Loading quiz...</Typography>
-        </Container>
-      </Layout>
-    )
-  }
-
-  if (error) {
-    return (
-      <Layout>
-        <Container>
-          <Alert severity="error">{error}</Alert>
-          <Button 
-            onClick={() => navigate(`/lessons/${id}`)} 
-            startIcon={<ArrowBack />}
-            sx={{ mt: 2 }}
-          >
-            Back to Lesson
-          </Button>
-        </Container>
-      </Layout>
-    )
-  }
-
-  if (questions.length === 0) {
-    return (
-      <Layout>
-        <Container>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h5" gutterBottom>
-              No quiz questions available
-            </Typography>
-            <Typography paragraph color="textSecondary">
-              There are no quiz questions generated for this lesson yet.
-            </Typography>
-            <Button 
-              variant="contained" 
-              onClick={() => navigate(`/lessons/${id}`)}
-              startIcon={<ArrowBack />}
-            >
-              Back to Lesson
-            </Button>
-          </Paper>
-        </Container>
-      </Layout>
-    )
-  }
-
-  if (quizCompleted) {
-    const percentage = Math.round((score / questions.length) * 100)
-    return (
-      <Layout>
-        <Container maxWidth="md">
-          <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="h4" gutterBottom>
-              Quiz Completed!
-            </Typography>
-            
-            <Typography variant="h5" gutterBottom>
-              Your Score: {score} / {questions.length} ({percentage}%)
-            </Typography>
-            
-            <Box sx={{ mt: 3, mb: 4 }}>
-              <LinearProgress 
-                variant="determinate" 
-                value={percentage} 
-                sx={{ 
-                  height: 10, 
-                  borderRadius: 5,
-                  backgroundColor: '#e0e0e0',
-                  '& .MuiLinearProgress-bar': {
-                    backgroundColor: percentage >= 70 ? '#4caf50' : 
-                                      percentage >= 40 ? '#ff9800' : '#f44336'
-                  }
-                }}
-              />
-            </Box>
-            
-            <Stack direction="row" spacing={2} justifyContent="center">
-              <Button 
-                variant="outlined" 
-                onClick={handleRestartQuiz}
-                startIcon={<Refresh />}
-              >
-                Restart Quiz
-              </Button>
-              <Button 
-                variant="contained" 
-                onClick={() => navigate(`/lessons/${id}`)}
-                startIcon={<ArrowBack />}
-              >
-                Back to Lesson
-              </Button>
-            </Stack>
-          </Paper>
-        </Container>
-      </Layout>
-    )
-  }
-
-  const question = questions[currentQuestion]
-
-  return (
-    <Layout>
-      <Container maxWidth="md">
-        <Box sx={{ mb: 3 }}>
-          <Button 
-            onClick={() => navigate(`/lessons/${id}`)} 
-            startIcon={<ArrowBack />}
-          >
-            Back to Lesson
-          </Button>
-        </Box>
-        
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" color="textSecondary" gutterBottom>
-              Quiz: {lesson?.title}
-            </Typography>
-            <LinearProgress 
-              variant="determinate" 
-              value={(currentQuestion / questions.length) * 100} 
-              sx={{ height: 8, borderRadius: 4 }} 
-            />
-            <Typography variant="body2" align="right" sx={{ mt: 1 }}>
-              Question {currentQuestion + 1} of {questions.length}
-            </Typography>
-          </Box>
-          
-          <Typography variant="h5" component="h2" gutterBottom>
-            {question.question}
-          </Typography>
-          
-          <Box sx={{ my: 3 }}>
-            <FormControl component="fieldset" fullWidth>
-              <RadioGroup value={selectedAnswer} onChange={handleAnswerSelect}>
-                {question.options.map((option, index) => (
-                  <FormControlLabel
-                    key={index}
-                    value={option}
-                    control={<Radio />}
-                    label={option}
-                    disabled={isSubmitted}
-                    sx={{
-                      p: 1,
-                      borderRadius: 1,
-                      ...(isSubmitted && option === question.correct_answer && {
-                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                      }),
-                      ...(isSubmitted && selectedAnswer === option && option !== question.correct_answer && {
-                        backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                      }),
-                    }}
-                  />
-                ))}
-              </RadioGroup>
-            </FormControl>
-          </Box>
-          
-          {isSubmitted && (
-            <Card variant="outlined" sx={{ mb: 3, bgcolor: selectedAnswer === question.correct_answer ? 'rgba(76, 175, 80, 0.05)' : 'rgba(244, 67, 54, 0.05)' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  {selectedAnswer === question.correct_answer ? (
-                    <Check color="success" />
-                  ) : (
-                    <Close color="error" />
-                  )}
-                  <Typography variant="subtitle1" sx={{ ml: 1 }}>
-                    {selectedAnswer === question.correct_answer ? 'Correct!' : 'Incorrect'}
-                  </Typography>
-                </Box>
-                
-                {question.explanation && (
-                  <Typography variant="body2">
-                    {question.explanation}
-                  </Typography>
-                )}
-              </CardContent>
-            </Card>
-          )}
-          
-          <Divider sx={{ my: 2 }} />
-          
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Button 
-              onClick={handlePrevQuestion} 
-              disabled={currentQuestion === 0}
-              startIcon={<ArrowBack />}
-            >
-              Previous
-            </Button>
-            
-            {!isSubmitted ? (
-              <Button 
-                variant="contained" 
-                onClick={handleSubmitAnswer}
-                disabled={!selectedAnswer}
-              >
-                Check Answer
-              </Button>
-            ) : (
-              <Button 
-                variant="contained" 
-                onClick={handleNextQuestion}
-                endIcon={<ArrowForward />}
-              >
-                {currentQuestion === questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
-              </Button>
-            )}
-          </Box>
-        </Paper>
-      </Container>
-    </Layout>
-  )
+interface QuizPageState {
+  quiz: Quiz | null
+  attempt: QuizAttempt | null
+  currentQuestionIndex: number
+  answers: Record<string, string | string[]>
+  isLoading: boolean
+  isSubmitting: boolean
+  error: string | null
+  timeRemaining: number | null
+  isCompleted: boolean
 }
 
-export default QuizPage
+export default function QuizPage() {
+  const { lessonId } = useParams<{ lessonId: string }>()
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  
+  const [state, setState] = useState<QuizPageState>({
+    quiz: null,
+    attempt: null,
+    currentQuestionIndex: 0,
+    answers: {},
+    isLoading: true,
+    isSubmitting: false,
+    error: null,
+    timeRemaining: null,
+    isCompleted: false
+  })
+
+  const fetchQuizData = async () => {
+    if (!lessonId) {
+      setState(prev => ({ 
+        ...prev, 
+        error: 'Lesson ID is required',
+        isLoading: false 
+      }))
+      return
+    }
+
+    try {
+      setState(prev => ({ ...prev, isLoading: true, error: null }))
+
+      // Get quiz for lesson
+      const quizData = await quizService.getQuizByLesson(lessonId)
+      
+      if (!quizData) {
+        setState(prev => ({
+          ...prev,
+          error: 'No quiz found for this lesson',
+          isLoading: false
+        }))
+        return
+      }
+
+      // Start new attempt
+      const startData: StartQuizData = {
+        quiz_id: quizData.id
+      }
+      const attemptData = await quizService.startQuiz(startData)
+
+      setState(prev => ({
+        ...prev,
+        quiz: quizData,
+        attempt: attemptData.attempt,
+        timeRemaining: quizData.timeLimit ? quizData.timeLimit * 60 : null, // Convert minutes to seconds
+        isLoading: false
+      }))
+
+    } catch (error: any) {
+      console.error('Quiz fetch error:', error)
+      
+      if (error.response?.status === 401) {
+        setState(prev => ({
+          ...prev,
+          error: 'Please log in to take this quiz',
+          isLoading: false
+        }))
+      } else if (error.response?.status === 404) {
+        setState(prev => ({
+          ...prev,
+          error: 'Quiz not found for this lesson',
+          isLoading: false
+        }))
+      } else {
+        setState(prev => ({
+          ...prev,
+          error: error.message || 'Failed to load quiz',
+          isLoading: false
+        }))
+      }
+    }
+  }
+
+  useEffect(() => {
+    fetchQuizData()
+  }, [lessonId])
+
+  // Timer effect
+  useEffect(() => {
+    if (state.timeRemaining === null || state.timeRemaining <= 0 || state.isCompleted) {
+      return
+    }
+
+    const timer = setInterval(() => {
+      setState(prev => {
+        const newTime = prev.timeRemaining! - 1
+        
+        if (newTime <= 0) {
+          // Auto-submit when time runs out
+          handleSubmitQuiz()
+          return { ...prev, timeRemaining: 0 }
+        }
+        
+        return { ...prev, timeRemaining: newTime }
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [state.timeRemaining, state.isCompleted])
+
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+
+  const handleAnswerChange = (questionId: string, answer: string | string[]) => {
+    setState(prev => ({
+      ...prev,
+      answers: {
+        ...prev.answers,
+        [questionId]: answer
+      }
+    }))
+  }
+
+  const handleSubmitQuiz = async () => {
+    if (!state.attempt) return
+
+    try {
+      setState(prev => ({ ...prev, isSubmitting: true }))
+
+      const submitData: SubmitQuizData = {
+        attempt_id: state.attempt.id,
+        answers: state.answers,
+        time_spent: state.quiz?.timeLimit ? (state.quiz.timeLimit * 60) - (state.timeRemaining || 0) : undefined
+      }
+
+      const result = await quizService.submitQuiz(submitData)
+
+      setState(prev => ({
+        ...prev,
+        isCompleted: true,
+        isSubmitting: false
+      }))
+
+      toast({
+        title: "Quiz Completed!",
+        description: `Quiz submitted successfully.`,
+      })
+
+    } catch (error: any) {
+      console.error('Submit quiz error:', error)
+      
+      setState(prev => ({ ...prev, isSubmitting: false }))
+      
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit quiz",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const getAnsweredQuestionsCount = (): number => {
+    return Object.keys(state.answers).length
+  }
+
+  const isCurrentQuestionAnswered = (): boolean => {
+    const currentQuestion = state.quiz?.questions[state.currentQuestionIndex]
+    return currentQuestion ? !!state.answers[currentQuestion.id] : false
+  }
+
+  if (state.isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header Skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+
+        {/* Progress Skeleton */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <Skeleton className="h-2 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Question Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center space-x-3">
+                <Skeleton className="h-4 w-4 rounded-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (state.error) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{state.error}</span>
+            <div className="flex gap-2 ml-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate('/lessons')}
+              >
+                <ArrowLeft className="h-3 w-3 mr-1" />
+                Back to Lessons
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchQuizData}
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Retry
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  if (!state.quiz || state.quiz.questions.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-12">
+        <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-medium mb-2">No Quiz Available</h3>
+        <p className="text-muted-foreground mb-4">
+          This lesson doesn't have a quiz yet. Check back later or explore other lessons.
+        </p>
+        <Button onClick={() => navigate('/lessons')}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Lessons
+        </Button>
+      </div>
+    )
+  }
+
+  const currentQuestion = state.quiz.questions[state.currentQuestionIndex]
+  const progress = ((state.currentQuestionIndex + 1) / state.quiz.questions.length) * 100
+  const answeredCount = getAnsweredQuestionsCount()
+
+  // Quiz completed view
+  if (state.isCompleted && state.attempt) {
+    const scorePercentage = state.attempt.totalPoints ? 
+      (state.attempt.pointsEarned || 0) / state.attempt.totalPoints * 100 : 0
+    const passed = scorePercentage >= (state.quiz.passingScore || 70)
+
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Results Header */}
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            {passed ? (
+              <div className="p-4 bg-green-100 rounded-full">
+                <Trophy className="h-12 w-12 text-green-600" />
+              </div>
+            ) : (
+              <div className="p-4 bg-orange-100 rounded-full">
+                <Target className="h-12 w-12 text-orange-600" />
+              </div>
+            )}
+          </div>
+          
+          <div>
+            <h1 className="text-3xl font-bold">
+              {passed ? 'Congratulations!' : 'Quiz Completed'}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {passed 
+                ? 'You passed the quiz successfully!'
+                : 'You can review and retake the quiz if needed.'
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Results Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">Quiz Results</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Score Display */}
+            <div className="text-center space-y-2">
+              <div className="text-4xl font-bold">
+                {state.attempt.pointsEarned || 0} / {state.attempt.totalPoints}
+              </div>
+              <p className="text-muted-foreground">
+                {scorePercentage.toFixed(1)}% Score
+              </p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Score</span>
+                <span>{scorePercentage.toFixed(1)}%</span>
+              </div>
+              <Progress value={scorePercentage} className="h-3" />
+            </div>
+
+            {/* Additional Stats */}
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold">{state.quiz.questions.length}</div>
+                <p className="text-sm text-muted-foreground">Total Questions</p>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{answeredCount}</div>
+                <p className="text-sm text-muted-foreground">Answered</p>
+              </div>
+            </div>
+
+            {/* Pass/Fail Status */}
+            <div className="text-center">
+              <Badge 
+                variant={passed ? "default" : "secondary"}
+                className={`text-sm px-4 py-2 ${
+                  passed 
+                    ? 'bg-green-100 text-green-800 border-green-200' 
+                    : 'bg-orange-100 text-orange-800 border-orange-200'
+                }`}
+              >
+                {passed ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Passed
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Needs Improvement
+                  </>
+                )}
+              </Badge>
+              <p className="text-xs text-muted-foreground mt-2">
+                Passing score: {state.quiz.passingScore || 70}%
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate(`/lessons/${lessonId}`)}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Lesson
+              </Button>
+              <Button onClick={fetchQuizData}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Retake Quiz
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Quiz Header */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">{state.quiz.title}</h1>
+          {state.timeRemaining !== null && (
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-lg ${
+              state.timeRemaining < 300 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+            }`}>
+              <Clock className="h-4 w-4" />
+              <span className="font-mono">
+                {formatTime(state.timeRemaining)}
+              </span>
+            </div>
+          )}
+        </div>
+        <p className="text-muted-foreground">{state.quiz.description}</p>
+      </div>
+
+      {/* Progress Card */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="flex justify-between text-sm">
+              <span>Question {state.currentQuestionIndex + 1} of {state.quiz.questions.length}</span>
+              <span>{answeredCount} answered</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Question Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">
+            {currentQuestion.question}
+          </CardTitle>
+          {currentQuestion.points && (
+            <p className="text-sm text-muted-foreground">
+              Worth {currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Answer Options */}
+          {currentQuestion.type === 'multiple_choice' && currentQuestion.options && (
+            <RadioGroup 
+              value={state.answers[currentQuestion.id] as string || ''}
+              onValueChange={(value) => {
+                handleAnswerChange(currentQuestion.id, value)
+              }}
+            >
+              {currentQuestion.options.map((option, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <RadioGroupItem value={option.text} id={`option-${index}`} />
+                  <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
+                    {option.text}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          )}
+
+          {currentQuestion.type === 'true_false' && (
+            <RadioGroup 
+              value={state.answers[currentQuestion.id] as string || ''}
+              onValueChange={(value) => {
+                handleAnswerChange(currentQuestion.id, value)
+              }}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="true" id="true" />
+                <Label htmlFor="true" className="cursor-pointer">True</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="false" id="false" />
+                <Label htmlFor="false" className="cursor-pointer">False</Label>
+              </div>
+            </RadioGroup>
+          )}
+
+          {/* Answer Status */}
+          {isCurrentQuestionAnswered() && (
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <CheckCircle className="h-4 w-4" />
+              Answer saved
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Navigation */}
+      <div className="flex justify-between items-center">
+        <Button 
+          variant="outline" 
+          onClick={handlePreviousQuestion}
+          disabled={state.currentQuestionIndex === 0}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Previous
+        </Button>
+
+        <div className="flex gap-2">
+          {state.currentQuestionIndex === state.quiz.questions.length - 1 ? (
+            <Button 
+              onClick={handleSubmitQuiz}
+              disabled={state.isSubmitting || answeredCount === 0}
+              className="min-w-32"
+            >
+              {state.isSubmitting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Submit Quiz
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleNextQuestion}
+              disabled={state.currentQuestionIndex === state.quiz.questions.length - 1}
+            >
+              Next
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Quiz Info */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+            <span>Questions: {state.quiz.questions.length}</span>
+            {state.quiz.timeLimit && <span>Time Limit: {state.quiz.timeLimit} minutes</span>}
+            {state.quiz.passingScore && <span>Passing Score: {state.quiz.passingScore}%</span>}
+            <span>Attempts: {state.attempt?.attemptNumber || 1}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

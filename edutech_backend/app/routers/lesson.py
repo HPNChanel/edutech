@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 import os
@@ -77,16 +77,50 @@ async def get_lessons(
     result = await db.execute(query)
     return result.scalars().all()
 
+@router.get("/my-lessons", response_model=List[LessonSchema])
+async def get_my_lessons(
+    category_id: Optional[int] = Query(None),
+    search: Optional[str] = Query(None),
+    limit: Optional[int] = Query(50, le=100),
+    offset: Optional[int] = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get all lessons for the current user with optional filtering
+    """
+    query = select(Lesson).options(joinedload(Lesson.category)).where(
+        Lesson.user_id == current_user.id
+    )
+    
+    # Apply filters
+    if category_id:
+        query = query.where(Lesson.category_id == category_id)
+    
+    if search:
+        query = query.where(
+            Lesson.title.contains(search) | 
+            Lesson.content.contains(search) |
+            Lesson.summary.contains(search)
+        )
+    
+    # Add ordering and pagination
+    query = query.order_by(Lesson.created_at.desc()).offset(offset).limit(limit)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+
 @router.get("/{lesson_id}", response_model=LessonSchema)
 async def get_lesson(
     lesson_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # Modify query to include category
+    # Check if lesson exists and belongs to user
     result = await db.execute(
         select(Lesson).options(joinedload(Lesson.category)).where(
-            Lesson.id == lesson_id
+            Lesson.id == lesson_id,
+            Lesson.user_id == current_user.id
         )
     )
     lesson = result.scalar_one_or_none()
@@ -265,8 +299,6 @@ async def upload_lesson_file(
     db.add(db_document)
     
     # Update lesson content based on file type
-    # This is a simple implementation - in a real app, you'd want to parse
-    # the document based on its type (.docx, .pdf, etc.) and extract content
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -278,3 +310,81 @@ async def upload_lesson_file(
     await db.commit()
     await db.refresh(db_document)
     return db_document
+
+@router.get("/search/", response_model=List[LessonSchema])
+async def search_lessons(
+    q: str = Query(..., min_length=1, description="Search query"),
+    category_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Search lessons by title or content"""
+    
+    query = select(Lesson).where(
+        Lesson.user_id == current_user.id,
+        Lesson.title.contains(q) | Lesson.content.contains(q)
+    )
+    
+    if category_id:
+        query = query.where(Lesson.category_id == category_id)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+
+@router.get("/{lesson_id}/stats")
+async def get_lesson_stats(
+    lesson_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get lesson statistics (notes, highlights, quizzes count)"""
+    
+    # Verify lesson belongs to user
+    result = await db.execute(
+        select(Lesson).where(
+            Lesson.id == lesson_id,
+            Lesson.user_id == current_user.id
+        )
+    )
+    lesson = result.scalar_one_or_none()
+    
+    if not lesson:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lesson not found"
+        )
+    
+    # Get counts
+    from app.models.note import Note
+    from app.models.highlight import Highlight
+    from app.models.quiz import Quiz
+    
+    notes_count = await db.execute(
+        select(func.count(Note.id)).where(
+            Note.lesson_id == lesson_id,
+            Note.user_id == current_user.id
+        )
+    )
+    
+    highlights_count = await db.execute(
+        select(func.count(Highlight.id)).where(
+            Highlight.lesson_id == lesson_id,
+            Highlight.user_id == current_user.id
+        )
+    )
+    
+    quizzes_count = await db.execute(
+        select(func.count(Quiz.id)).where(
+            Quiz.lesson_id == lesson_id,
+            Quiz.user_id == current_user.id
+        )
+    )
+    
+    return {
+        "lesson_id": lesson_id,
+        "notes_count": notes_count.scalar(),
+        "highlights_count": highlights_count.scalar(),
+        "quizzes_count": quizzes_count.scalar(),
+        "word_count": len(lesson.content.split()) if lesson.content else 0,
+        "estimated_reading_time": max(1, len(lesson.content.split()) // 200) if lesson.content else 0  # 200 words per minute
+    }

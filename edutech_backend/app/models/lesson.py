@@ -17,7 +17,22 @@ class Lesson(Base):
     # Relationships
     user = relationship("User", back_populates="lessons")
     category = relationship("Category", back_populates="lessons")
-    documents = relationship("Document", back_populates="lesson", cascade="all, delete-orphan")
+    
+    # Fix: Specify foreign_keys to resolve ambiguity
+    documents = relationship(
+        "Document", 
+        back_populates="lesson", 
+        foreign_keys="Document.lesson_id",
+        cascade="all, delete-orphan"
+    )
+    
+    # Separate relationship for converted documents
+    converted_documents = relationship(
+        "Document",
+        foreign_keys="Document.converted_lesson_id",
+        cascade="all, delete-orphan"
+    )
+    
     notes = relationship("Note", back_populates="lesson", cascade="all, delete-orphan")
     highlights = relationship("Highlight", back_populates="lesson", cascade="all, delete-orphan")
     quizzes = relationship("Quiz", back_populates="lesson", cascade="all, delete-orphan")

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func, Boolean, Text
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -12,5 +12,20 @@ class Document(Base):
     file_path = Column(String(500), nullable=False)
     uploaded_at = Column(DateTime, server_default=func.now())
     
-    # Relationships
-    lesson = relationship("Lesson", back_populates="documents")
+    # Conversion tracking fields
+    converted = Column(Boolean, default=False, nullable=False)
+    converted_lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=True)
+    conversion_error = Column(Text, nullable=True)
+    
+    # Relationships - Fix: Explicitly specify foreign_keys to resolve ambiguity
+    lesson = relationship(
+        "Lesson", 
+        back_populates="documents", 
+        foreign_keys=[lesson_id]
+    )
+    
+    converted_lesson = relationship(
+        "Lesson", 
+        foreign_keys=[converted_lesson_id],
+        overlaps="converted_documents"
+    )

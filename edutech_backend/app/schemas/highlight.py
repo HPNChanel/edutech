@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 
@@ -19,12 +19,11 @@ class HighlightUpdate(BaseModel):
     to_char: Optional[int] = None
 
 class Highlight(HighlightBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     user_id: int
     created_at: datetime
-    
-    class Config:
-        orm_mode = True
 
 class HighlightWithNoteCreate(HighlightCreate):
     note_content: Optional[str] = None

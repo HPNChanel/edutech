@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 
@@ -21,9 +21,8 @@ class NoteUpdate(BaseModel):
     selected_text: Optional[str] = None
 
 class Note(NoteBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     user_id: int
     created_at: datetime
-    
-    class Config:
-        orm_mode = True

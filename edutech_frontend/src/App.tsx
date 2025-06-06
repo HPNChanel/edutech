@@ -1,138 +1,184 @@
-import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { ThemeProvider } from '@mui/material/styles'
-import { Box, CircularProgress, Alert } from '@mui/material'
-import CssBaseline from '@mui/material/CssBaseline'
-import theme from './theme'
-import { useUserStore } from './store/useUserStore'
-import { authService } from './services/authService'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
-// Pages
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
+import Layout from './components/Layout/Layout'
 import DashboardPage from './pages/DashboardPage'
-import LessonPage from './pages/LessonPage'
-import UploadPage from './pages/UploadPage'
-import CreateLessonPage from './pages/CreateLessonPage'
+import LessonDetailPage from './pages/LessonDetailPage' // Add this import
+import Login from './pages/Auth/Login'
+import Register from './pages/Auth/Register'
+import ForgotPassword from './pages/Auth/ForgotPassword'
 import QuizPage from './pages/QuizPage'
-import ProfilePage from './pages/ProfilePage'
-import NotFoundPage from './pages/NotFoundPage'
-import CategoryPage from './pages/CategoryPage'
 import MyNotesPage from './pages/MyNotesPage'
+import CreateLessonPage from './pages/CreateLessonPage'
+import CategoryPage from './pages/CategoryPage'
+import ProfilePage from './pages/ProfilePage'
+import SettingsPage from './pages/SettingsPage'
+import CategoryManagement from './pages/Admin/CategoryManagement'
+import { Toaster } from './components/ui/toaster'
+import { AuthProvider, useAuth } from './hooks/useAuth'
+import { Skeleton } from './components/ui/skeleton'
+import { Alert, AlertDescription } from './components/ui/alert'
+import { Button } from './components/ui/button'
+import { Card, CardContent } from './components/ui/card'
+import { AlertTriangle, BookOpen, RefreshCw } from 'lucide-react'
+import CategoriesPage from './pages/CategoriesPage'
+import MyLessonsPage from './pages/MyLessonsPage'
 
-// Layout
-import Layout from './components/Layout'
+// Loading Component
+function AuthLoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-6">
+            {/* Logo/Icon */}
+            <div className="flex justify-center">
+              <div className="p-3 bg-primary/10 rounded-full">
+                <BookOpen className="h-8 w-8 text-primary" />
+              </div>
+            </div>
 
-// RequireAuth component for protected routes
-const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useUserStore()
-  const location = useLocation()
-  
-  // Show loading while checking authentication
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    )
-  }
-  
-  if (!user) {
-    // Redirect to login page but save the attempted location
-    return <Navigate to="/login" state={{ from: location }} replace />
-  }
-  
-  return <>{children}</>
+            {/* Loading Content */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-32 mx-auto" />
+                <Skeleton className="h-4 w-48 mx-auto" />
+              </div>
+              
+              {/* Animated Spinner */}
+              <div className="flex justify-center">
+                <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+              </div>
+              
+              <p className="text-sm text-muted-foreground">
+                Checking authentication...
+              </p>
+            </div>
+
+            {/* Loading Progress Skeleton */}
+            <div className="space-y-3">
+              <Skeleton className="h-2 w-full" />
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
 }
 
-function App() {
-  const { user, setUser } = useUserStore()
-  const [initialCheckDone, setInitialCheckDone] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
+// Error Component
+function AuthErrorScreen({ error, onRetry }: { error: string; onRetry: () => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-6">
+            {/* Error Icon */}
+            <div className="flex justify-center">
+              <div className="p-3 bg-red-100 rounded-full">
+                <AlertTriangle className="h-8 w-8 text-red-600" />
+              </div>
+            </div>
 
-  // Check for authentication on app load
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        if (authService.isAuthenticated() && !user) {
-          const currentUser = await authService.getCurrentUser()
-          setUser(currentUser)
-        }
-      } catch (error) {
-        console.error('Authentication check failed:', error)
-        // If token is invalid, clear it
-        authService.logout()
-        setAuthError('Your session has expired. Please log in again.')
-      } finally {
-        setInitialCheckDone(true)
-      }
-    }
+            {/* Error Alert */}
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {error}
+              </AlertDescription>
+            </Alert>
 
-    checkAuth()
-  }, [user, setUser])
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <Button onClick={onRetry} className="w-full">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.href = '/login'}
+                className="w-full"
+              >
+                Go to Login
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
-  if (!initialCheckDone) {
+// App Router Component
+function AppRouter() {
+  const { isAuthenticated, isLoading, error, getCurrentUser, clearError } = useAuth()
+
+  // Loading state
+  if (isLoading) {
+    return <AuthLoadingScreen />
+  }
+
+  // Error state - only show error screen for critical auth errors
+  if (error && !isAuthenticated) {
     return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <CircularProgress />
-        </Box>
-      </ThemeProvider>
+      <AuthErrorScreen 
+        error={error} 
+        onRetry={() => {
+          clearError()
+          getCurrentUser()
+        }} 
+      />
     )
   }
 
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      
-      {authError && (
-        <Alert 
-          severity="warning" 
-          sx={{ position: 'fixed', top: 0, width: '100%', zIndex: 9999 }}
-          onClose={() => setAuthError(null)}
-        >
-          {authError}
-        </Alert>
-      )}
-      
+  // Not authenticated - show auth routes
+  if (!isAuthenticated) {
+    return (
       <Routes>
-        {/* Public routes */}
-        <Route 
-          path="/login" 
-          element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} 
-        />
-        <Route 
-          path="/register" 
-          element={user ? <Navigate to="/dashboard" replace /> : <RegisterPage />} 
-        />
-
-        {/* Protected routes */}
-        <Route path="/" element={<RequireAuth><Layout><DashboardPage /></Layout></RequireAuth>} />
-        <Route path="/dashboard" element={<RequireAuth><Layout><DashboardPage /></Layout></RequireAuth>} />
-        <Route path="/lessons/:id" element={<RequireAuth><Layout><LessonPage /></Layout></RequireAuth>} />
-        <Route path="/upload" element={<RequireAuth><Layout><UploadPage /></Layout></RequireAuth>} />
-        <Route path="/create-lesson" element={<RequireAuth><Layout><CreateLessonPage /></Layout></RequireAuth>} />
-        <Route path="/quiz/:id" element={<RequireAuth><Layout><QuizPage /></Layout></RequireAuth>} />
-        <Route path="/profile" element={<RequireAuth><Layout><ProfilePage /></Layout></RequireAuth>} />
-        <Route path="/categories" element={<RequireAuth><Layout><CategoryPage /></Layout></RequireAuth>} />
-        <Route path="/notes" element={<RequireAuth><Layout><MyNotesPage /></Layout></RequireAuth>} />
-
-        {/* 404 Not Found route */}
-        <Route 
-          path="*" 
-          element={
-            user ? (
-              <Layout>
-                <NotFoundPage />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          } 
-        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </ThemeProvider>
+    )
+  }
+
+  // Authenticated - show main app (even if there are non-critical errors)
+  return (
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="lessons/:id" element={<LessonDetailPage />} />
+        <Route path="lessons" element={<MyLessonsPage />} />
+        <Route path="my-lessons" element={<MyLessonsPage />} />
+        <Route path="lessons/create" element={<CreateLessonPage />} />
+        <Route path="categories" element={<CategoriesPage />} />
+        <Route path="categories/:categoryId" element={<CategoryPage />} />
+        <Route path="admin/categories" element={<CategoryManagement />} />
+        <Route path="notes" element={<MyNotesPage />} />
+        <Route path="quizzes/:lessonId" element={<QuizPage />} />
+        <Route path="quizzes" element={<div className="p-6">Quizzes - Coming Soon</div>} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  )
+}
+
+// Main App Component
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRouter />
+        <Toaster />
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 

@@ -38,7 +38,7 @@ app.include_router(highlight.router, prefix="/api")
 app.include_router(quiz.router, prefix="/api")
 app.include_router(question.router, prefix="/api")
 app.include_router(document.router, prefix="/api")
-app.include_router(dashboard.router)  # Already has correct prefix "/api/dashboard"
+app.include_router(dashboard.router, prefix="/api")  # Add prefix here since router prefix is now just "/dashboard"
 
 @app.get("/")
 async def root():

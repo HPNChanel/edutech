@@ -1,10 +1,13 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.category import Category as CategorySchema, CategoryCreate, CategoryUpdate
+from app.models.category import Category
+from app.models.lesson import Lesson
+from app.schemas.category import Category as CategorySchema, CategoryCreate, CategoryUpdate, CategoryWithStats
 from app.utils.auth import get_current_active_user
 from app.services.category_service import CategoryService
 
@@ -25,28 +28,33 @@ async def create_category(
             detail=f"Failed to create category: {str(e)}"
         )
 
-@router.get("/", response_model=List[CategorySchema])
+@router.get("/", response_model=List[CategoryWithStats])
 async def get_categories(
+    skip: int = Query(0, ge=0, description="Number of categories to skip"),
+    limit: int = Query(100, ge=1, le=100, description="Number of categories to return"),
+    search: Optional[str] = Query(None, description="Search categories by name"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get all categories for the current user"""
+    """Get all categories for the current user with lesson counts"""
     try:
-        return await CategoryService.get_user_categories(db, current_user.id)
+        return await CategoryService.get_user_categories_with_stats(
+            db, current_user.id, skip=skip, limit=limit, search=search
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve categories: {str(e)}"
         )
 
-@router.get("/{category_id}", response_model=CategorySchema)
+@router.get("/{category_id}", response_model=CategoryWithStats)
 async def get_category(
     category_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get a specific category by ID"""
-    return await CategoryService.get_category_by_id(db, category_id, current_user.id)
+    """Get a specific category by ID with stats"""
+    return await CategoryService.get_category_with_stats(db, category_id, current_user.id)
 
 @router.put("/{category_id}", response_model=CategorySchema)
 async def update_category(

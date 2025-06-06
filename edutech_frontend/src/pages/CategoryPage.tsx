@@ -1,328 +1,324 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Container,
-  Typography,
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  IconButton,
-  Fab,
-  Chip,
-  Alert,
-  CircularProgress,
-  Menu,
-  MenuItem,
-  Divider
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  MoreVert as MoreVertIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Folder as FolderIcon,
-  Article as ArticleIcon
-} from '@mui/icons-material';
-import { categoryService } from '../services/categoryService';
-import { lessonService } from '../services/lessonService';
-import type { Category } from '../types/lesson';
-import Layout from '../components/Layout';
-import CategoryModal from '../components/CategoryModal';
-import ConfirmDialog from '../components/ConfirmDialog';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
+import { categoryService, Category } from '@/services/categoryService'
+import { lessonService, Lesson } from '@/services/lessonService'
+import { 
+  ArrowLeft, 
+  BookOpen, 
+  Calendar,
+  Clock,
+  User,
+  PlayCircle,
+  AlertTriangle,
+  FileText,
+  Edit,
+  Eye
+} from 'lucide-react'
 
-dayjs.extend(relativeTime);
-
-const CategoryPage: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+export default function CategoryPage() {
+  const { categoryId } = useParams<{ categoryId: string }>()
+  const navigate = useNavigate()
   
-  // Modal states
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editCategory, setEditCategory] = useState<Category | undefined>(undefined);
-  
-  // Delete confirmation state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  
-  // Menu state for category actions
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  
-  // Lesson counts for each category
-  const [lessonCounts, setLessonCounts] = useState<Record<number, number>>({});
+  const [category, setCategory] = useState<Category | null>(null)
+  const [lessons, setLessons] = useState<Lesson[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingLessons, setIsLoadingLessons] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    const fetchCategoryData = async () => {
+      if (!categoryId) {
+        setError('Category ID is required')
+        setIsLoading(false)
+        return
+      }
 
-  const fetchCategories = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      const data = await categoryService.getAll();
-      setCategories(data);
-      
-      // Fetch lesson counts for each category
-      const counts: Record<number, number> = {};
-      await Promise.all(
-        data.map(async (category) => {
-          try {
-            const lessons = await lessonService.getAll(category.id);
-            counts[category.id] = lessons.length;
-          } catch (err) {
-            counts[category.id] = 0;
-          }
-        })
-      );
-      setLessonCounts(counts);
-    } catch (err: any) {
-      setError('Failed to load categories');
-      console.error('Failed to fetch categories:', err);
-    } finally {
-      setLoading(false);
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        console.log('Fetching category:', categoryId)
+        
+        // Fetch category details from API
+        const categoryData = await categoryService.getCategoryById(parseInt(categoryId))
+        console.log('Category data received:', categoryData)
+        
+        setCategory(categoryData)
+        
+      } catch (err: any) {
+        console.error('Category data fetch error:', err)
+        setError(err.message || 'Failed to load category data')
+      } finally {
+        setIsLoading(false)
+      }
     }
-  };
 
-  const handleCreateCategory = () => {
-    setEditCategory(undefined);
-    setModalOpen(true);
-  };
+    fetchCategoryData()
+  }, [categoryId])
 
-  const handleEditCategory = (category: Category) => {
-    setEditCategory(category);
-    setModalOpen(true);
-    handleMenuClose();
-  };
+  useEffect(() => {
+    const fetchLessons = async () => {
+      if (!categoryId) return
 
-  const handleDeleteCategory = (category: Category) => {
-    setCategoryToDelete(category);
-    setDeleteDialogOpen(true);
-    handleMenuClose();
-  };
-
-  const confirmDeleteCategory = async () => {
-    if (!categoryToDelete) return;
-    
-    try {
-      await categoryService.delete(categoryToDelete.id);
-      setSuccess(`Category "${categoryToDelete.name}" deleted successfully`);
-      fetchCategories();
-    } catch (err: any) {
-      setError('Failed to delete category');
-      console.error('Failed to delete category:', err);
-    } finally {
-      setDeleteDialogOpen(false);
-      setCategoryToDelete(null);
+      try {
+        setIsLoadingLessons(true)
+        
+        console.log('Fetching lessons for category:', categoryId)
+        
+        // Fetch lessons for this category using the lesson service
+        const lessonsData = await lessonService.getLessonsByCategory(parseInt(categoryId))
+        console.log('Lessons data received:', lessonsData)
+        
+        setLessons(lessonsData)
+        
+      } catch (err: any) {
+        console.error('Lessons data fetch error:', err)
+        // Don't set main error state for lessons fetch failure
+        console.warn('Failed to load lessons for category:', err.message)
+        setLessons([]) // Set empty array on error
+      } finally {
+        setIsLoadingLessons(false)
+      }
     }
-  };
 
-  const handleModalSuccess = () => {
-    fetchCategories();
-    setSuccess(editCategory ? 'Category updated successfully' : 'Category created successfully');
-  };
+    fetchLessons()
+  }, [categoryId])
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, category: Category) => {
-    event.stopPropagation();
-    setAnchorEl(event.currentTarget);
-    setSelectedCategory(category);
-  };
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedCategory(null);
-  };
+  const formatDuration = (content?: string) => {
+    if (!content) return '0m'
+    const wordCount = content.split(' ').length
+    const minutes = Math.max(1, Math.ceil(wordCount / 200)) // 200 words per minute
+    return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+  }
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Unknown date';
-    return dayjs(dateString).fromNow();
-  };
+  const handleStartLesson = (lessonId: number) => {
+    navigate(`/lessons/${lessonId}`)
+  }
+
+  const handleEditLesson = (lessonId: number) => {
+    navigate(`/lessons/${lessonId}/edit`)
+  }
+
+  const handleBackToCategories = () => {
+    navigate('/categories')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground">Loading category...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !category) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center justify-center min-h-96">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p>{error || 'Category not found'}</p>
+                    <Button onClick={handleBackToCategories} variant="outline" size="sm">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back to Categories
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <Layout>
-      <Container maxWidth="lg">
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Categories
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Organize your lessons by creating custom categories
-          </Typography>
-        </Box>
-
-        {/* Status Messages */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-            {error}
-          </Alert>
-        )}
-        
-        {success && (
-          <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
-            {success}
-          </Alert>
-        )}
-
-        {/* Loading State */}
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-            <CircularProgress />
-          </Box>
-        ) : categories.length === 0 ? (
-          /* Empty State */
-          <Box sx={{ textAlign: 'center', py: 8 }}>
-            <FolderIcon sx={{ fontSize: 80, color: 'text.disabled', mb: 2 }} />
-            <Typography variant="h5" gutterBottom>
-              No categories yet
-            </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph>
-              Create your first category to start organizing your lessons
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleCreateCategory}
-              size="large"
-            >
-              Create Category
-            </Button>
-          </Box>
-        ) : (
-          /* Categories Grid */
-          <Grid container spacing={3}>
-            {categories.map((category) => (
-              <Grid item xs={12} sm={6} md={4} key={category.id}>
-                <Card 
-                  sx={{ 
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 4
-                    }
-                  }}
-                >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <FolderIcon color="primary" sx={{ fontSize: 32 }} />
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleMenuOpen(e, category)}
-                      >
-                        <MoreVertIcon />
-                      </IconButton>
-                    </Box>
-                    
-                    <Typography variant="h6" component="h2" gutterBottom noWrap>
-                      {category.name}
-                    </Typography>
-                    
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary" 
-                      paragraph
-                      sx={{ 
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical',
-                        minHeight: '3em'
-                      }}
-                    >
-                      {category.description || 'No description provided'}
-                    </Typography>
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                      <Chip
-                        icon={<ArticleIcon />}
-                        label={`${lessonCounts[category.id] || 0} lessons`}
-                        size="small"
-                        variant="outlined"
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        {formatDate(category.created_at)}
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                  
-                  <CardActions>
-                    <Button size="small" onClick={() => handleEditCategory(category)}>
-                      Edit
-                    </Button>
-                    <Button size="small" color="error" onClick={() => handleDeleteCategory(category)}>
-                      Delete
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )}
-
-        {/* Action Menu */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-        >
-          <MenuItem onClick={() => selectedCategory && handleEditCategory(selectedCategory)}>
-            <EditIcon fontSize="small" sx={{ mr: 1 }} />
-            Edit
-          </MenuItem>
-          <Divider />
-          <MenuItem 
-            onClick={() => selectedCategory && handleDeleteCategory(selectedCategory)}
-            sx={{ color: 'error.main' }}
+    <div className="container mx-auto px-4 py-6 space-y-6">
+      {/* Page Header */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBackToCategories}
+            className="p-2"
           >
-            <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-            Delete
-          </MenuItem>
-        </Menu>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-gray-900">{category.name}</h1>
+            {category.description && (
+              <p className="text-muted-foreground mt-1">{category.description}</p>
+            )}
+          </div>
+        </div>
 
-        {/* Floating Action Button */}
-        {categories.length > 0 && (
-          <Fab
-            color="primary"
-            aria-label="add category"
-            onClick={handleCreateCategory}
-            sx={{
-              position: 'fixed',
-              bottom: 24,
-              right: 24,
-            }}
-          >
-            <AddIcon />
-          </Fab>
-        )}
+        {/* Category Stats */}
+        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <BookOpen className="h-4 w-4" />
+            {isLoadingLessons ? 'Loading...' : `${lessons.length} lessons`}
+          </span>
+          <span className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
+            Created {formatDate(category.created_at)}
+          </span>
+        </div>
+      </div>
 
-        {/* Create/Edit Category Modal */}
-        <CategoryModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSuccess={handleModalSuccess}
-          category={editCategory}
-        />
+      {/* Lessons Grid */}
+      {isLoadingLessons ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-2/3" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : lessons.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No lessons yet in this category</h3>
+              <p className="text-muted-foreground mb-4">
+                This category doesn't have any lessons yet. Create your first lesson to get started.
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={() => navigate('/lessons/create')}>
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Create First Lesson
+                </Button>
+                <Button onClick={handleBackToCategories} variant="outline">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Browse Other Categories
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {lessons.map((lesson) => (
+            <Card key={lesson.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2 flex-1">
+                    <CardTitle className="text-lg leading-6 line-clamp-2">
+                      {lesson.title}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        <FileText className="h-3 w-3 mr-1" />
+                        {lesson.content ? `${lesson.content.split(' ').length} words` : 'No content'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
 
-        {/* Delete Confirmation Dialog */}
-        <ConfirmDialog
-          open={deleteDialogOpen}
-          title="Delete Category"
-          content={`Are you sure you want to delete "${categoryToDelete?.name}"? This action cannot be undone and will affect all lessons in this category.`}
-          onConfirm={confirmDeleteCategory}
-          onCancel={() => setDeleteDialogOpen(false)}
-        />
-      </Container>
-    </Layout>
-  );
-};
+              <CardContent className="space-y-4">
+                {/* Lesson Summary */}
+                {lesson.summary && (
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {lesson.summary}
+                  </p>
+                )}
 
-export default CategoryPage;
+                {/* Lesson Metadata */}
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate(lesson.created_at)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDuration(lesson.content)}
+                    </span>
+                  </div>
+                  {lesson.updated_at !== lesson.created_at && (
+                    <div className="flex items-center gap-1">
+                      <Edit className="h-3 w-3" />
+                      Updated {formatDate(lesson.updated_at)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <Button 
+                    className="flex-1" 
+                    size="sm"
+                    onClick={() => handleStartLesson(lesson.id)}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Lesson
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditLesson(lesson.id)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Category Summary */}
+      {!isLoadingLessons && lessons.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {lessons.length} lesson{lessons.length !== 1 ? 's' : ''} in {category.name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Total estimated reading time: {lessons.reduce((acc, lesson) => {
+                  const wordCount = lesson.content ? lesson.content.split(' ').length : 0
+                  return acc + Math.max(1, Math.ceil(wordCount / 200))
+                }, 0)} minutes
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
