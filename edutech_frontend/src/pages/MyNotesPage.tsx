@@ -21,7 +21,8 @@ import {
   StickyNote,
   RefreshCw,
   AlertTriangle,
-  FileX
+  FileX,
+  ExternalLink
 } from 'lucide-react'
 
 interface NotesPageState {
@@ -392,7 +393,16 @@ export default function MyNotesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => navigate(`/lessons/${note.lessonId}`)}
+                      title="Go to Lesson"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleEditNote(note)}
+                      title="Edit Note"
                     >
                       <Edit3 className="h-4 w-4" />
                     </Button>
@@ -401,6 +411,7 @@ export default function MyNotesPage() {
                       size="sm"
                       onClick={() => handleDeleteNote(note.id)}
                       className="text-destructive hover:text-destructive"
+                      title="Delete Note"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

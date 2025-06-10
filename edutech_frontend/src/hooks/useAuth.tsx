@@ -85,32 +85,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (err: any) {
       console.error('Get current user error:', err)
       
-      // Check if we should attempt a token refresh
-      const hasRefreshToken = !!localStorage.getItem('refresh_token')
-      
-      if (hasRefreshToken && (err.response?.status === 401 || err.response?.status === 403)) {
-        try {
-          // Attempt token refresh
-          console.log('Attempting token refresh...')
-          await authService.refreshToken()
-          
-          // Retry getting current user after refresh
-          const authUser = await authService.verifyAuth()
-          
-          setUser({
-            id: authUser.id,
-            email: authUser.email,
-            name: authUser.name,
-            avatar: authUser.avatar
-          })
-          
-          console.log('Token refresh successful, user authenticated')
-          return
-          
-        } catch (refreshError: any) {
-          console.error('Token refresh failed:', refreshError)
-          // Fall through to clear auth state
+      // Handle authentication errors (401/403)
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        // Check if we should attempt a token refresh for 401 errors
+        const hasRefreshToken = !!localStorage.getItem('refresh_token')
+        
+        if (hasRefreshToken && err.response?.status === 401) {
+          try {
+            // Attempt token refresh
+            console.log('Attempting token refresh...')
+            await authService.refreshToken()
+            
+            // Retry getting current user after refresh
+            const authUser = await authService.verifyAuth()
+            
+            setUser({
+              id: authUser.id,
+              email: authUser.email,
+              name: authUser.name,
+              avatar: authUser.avatar
+            })
+            
+            console.log('Token refresh successful, user authenticated')
+            return
+            
+          } catch (refreshError: any) {
+            console.error('Token refresh failed:', refreshError)
+            // Fall through to clear auth state
+          }
         }
+        
+        // Clear auth state for all 401/403 errors that can't be resolved
+        console.log('Clearing auth state due to authentication failure')
+        setUser(null)
+        clearTokens()
+        
+        // Show appropriate message
+        if (err.response?.status === 403) {
+          setError('Your account has been disabled. Please contact support.')
+        } else {
+          setError('Your session has expired. Please login again.')
+        }
+        
+        // Auto-redirect to login after a short delay
+        setTimeout(() => {
+          navigate('/login', { replace: true })
+        }, 2000)
+        
+        return
       }
       
       // For 404 errors or other non-auth errors, don't clear user state if we have a user
@@ -120,16 +142,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return
       }
       
-      // Clear invalid auth state only for actual auth failures
-      if (err.response?.status === 401 || err.response?.status === 403 || !hasRefreshToken) {
-        setUser(null)
-        clearTokens()
-      }
-      
-      // Only set error for non-auth related issues or when refresh fails
-      if (err.response?.status !== 401 && err.response?.status !== 403) {
-        setError(err.message || 'Failed to load user data')
-      }
+      // For other errors, set error message but don't clear auth state
+      setError(err.message || 'Failed to load user data')
     } finally {
       setIsLoading(false)
     }
@@ -153,25 +167,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (err: any) {
       console.error('Refresh user error:', err)
       
-      // Try refresh token if auth failed
+      // Handle authentication errors
       if (err.response?.status === 401 || err.response?.status === 403) {
-        try {
-          await authService.refreshToken()
-          // Retry after refresh
-          const authUser = await authService.verifyAuth()
-          
-          setUser({
-            id: authUser.id,
-            email: authUser.email,
-            name: authUser.name,
-            avatar: authUser.avatar
-          })
-        } catch (refreshError) {
-          console.error('Refresh during user refresh failed:', refreshError)
-          // Only clear user state if refresh also fails
-          setUser(null)
-          clearTokens()
+        // Try refresh token only for 401 errors
+        if (err.response?.status === 401) {
+          try {
+            await authService.refreshToken()
+            // Retry after refresh
+            const authUser = await authService.verifyAuth()
+            
+            setUser({
+              id: authUser.id,
+              email: authUser.email,
+              name: authUser.name,
+              avatar: authUser.avatar
+            })
+            return
+          } catch (refreshError) {
+            console.error('Refresh during user refresh failed:', refreshError)
+            // Fall through to clear auth state
+          }
         }
+        
+        // Clear auth state for 403 or failed 401 refresh
+        setUser(null)
+        clearTokens()
+        
+        // Redirect to login for auth failures
+        navigate('/login', { replace: true })
       } else if (err.response?.status === 404) {
         // Don't clear user for 404 errors
         console.warn('User profile endpoint not found during refresh')

@@ -11,6 +11,11 @@ export interface Lesson {
     name: string
   }
   user_id: number
+  user?: {
+    id: number
+    name: string
+    email: string
+  }
   created_at: string
   updated_at: string
 }
@@ -46,6 +51,14 @@ export const lessonService = {
   // Get user's lessons
   getMyLessons: async (params?: LessonListParams): Promise<Lesson[]> => {
     const response = await api.get('/lessons/my-lessons', { params }) // Fixed endpoint to match backend
+    return response.data
+  },
+
+  // Get lessons by category ID
+  getLessonsByCategory: async (categoryId: number): Promise<Lesson[]> => {
+    const response = await api.get('/lessons', { 
+      params: { category_id: categoryId } 
+    })
     return response.data
   },
 

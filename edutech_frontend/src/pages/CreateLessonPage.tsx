@@ -185,7 +185,7 @@ export default function CreateLessonPage() {
       }
 
       // API call to create lesson using lessonService
-      const response = await lessonService.createLesson(lessonData)
+      await lessonService.createLesson(lessonData)
       
       // If there are attached files, upload them separately
       if (attachedFiles.length > 0) {
@@ -200,9 +200,9 @@ export default function CreateLessonPage() {
       
       navigate('/lessons')
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Create lesson error:', error)
-      setErrors({ general: error.message || 'Failed to create lesson' })
+      setErrors({ general: error instanceof Error ? error.message : 'Failed to create lesson' })
       toast({
         title: "Error",
         description: error.message || "Failed to create lesson",
@@ -479,7 +479,7 @@ export default function CreateLessonPage() {
             </div>
             
             <div className="prose max-w-none">
-              <div className="whitespace-pre-wrap bg-muted p-4 rounded-lg">
+              <div className="lesson-content whitespace-pre-wrap bg-muted p-4 rounded-lg select-text cursor-text [&_*]:select-text [&_*]:pointer-events-auto [&_*]:cursor-text">
                 {formData.content || 'No content yet...'}
               </div>
             </div>

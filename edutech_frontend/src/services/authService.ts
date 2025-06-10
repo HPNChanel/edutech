@@ -108,8 +108,22 @@ class AuthService {
       return response.data.user
     } catch (error: any) {
       console.error('Auth verification error:', error)
+      
+      // Handle authentication failures - clear tokens and throw
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        this.clearLocalTokens()
+      }
+      
       throw error
     }
+  }
+
+  /**
+   * Clear tokens from localStorage
+   */
+  private clearLocalTokens(): void {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('refresh_token')
   }
 
   /**
@@ -171,15 +185,5 @@ class AuthService {
 
 // Export singleton instance
 export const authService = new AuthService()
-
-// Export types
-export type {
-  LoginCredentials,
-  RegisterData,
-  AuthUser,
-  AuthTokens,
-  AuthResponse,
-  AuthVerifyResponse
-}
 
 export default authService

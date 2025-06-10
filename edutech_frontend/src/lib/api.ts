@@ -9,12 +9,12 @@ export const api: AxiosInstance = axios.create({
   },
 })
 
-// Token management
-export const getAuthToken = (): string | null => {
+// Token management functions
+export const getAccessToken = (): string | null => {
   return localStorage.getItem('auth_token')
 }
 
-export const setAuthToken = (token: string): void => {
+export const setAccessToken = (token: string): void => {
   localStorage.setItem('auth_token', token)
 }
 
@@ -29,6 +29,22 @@ export const setRefreshToken = (token: string): void => {
 export const clearTokens = (): void => {
   localStorage.removeItem('auth_token')
   localStorage.removeItem('refresh_token')
+}
+
+// Logout function to clear tokens and redirect
+export const logoutUser = (showToast: boolean = true): void => {
+  clearTokens()
+  
+  // Optional: Show toast notification
+  if (showToast && typeof window !== 'undefined') {
+    // You can integrate with your toast system here
+    console.warn('Session expired. Please log in again.')
+  }
+  
+  // Redirect to login page
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login'
+  }
 }
 
 // Flag to prevent multiple refresh attempts
@@ -51,10 +67,10 @@ const processQueue = (error: any = null, token: string | null = null) => {
   failedQueue = []
 }
 
-// Request interceptor to add auth token
+// Request interceptor to automatically attach access token
 api.interceptors.request.use(
   (config: AxiosRequestConfig) => {
-    const token = getAuthToken()
+    const token = getAccessToken()
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -65,22 +81,43 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor for handling auth errors
+// Response interceptor for handling authentication errors and token refresh
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
 
-    // If the error is 401 and we haven't already tried to refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Handle 403 Forbidden errors (account disabled/inactive)
+    if (error.response?.status === 403) {
+      console.warn('User account is inactive or disabled')
+      
+      // Show specific message for disabled account
+      if (typeof window !== 'undefined') {
+        alert('Your account has been disabled. Please contact support.')
+      }
+      
+      // Clear tokens and logout
+      logoutUser(false) // Don't show generic "session expired" message
+      return Promise.reject(error)
+    }
+
+    // Handle 401 Unauthorized errors (invalid token, user not found)
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      // Don't retry refresh endpoint requests to prevent infinite loops
+      if (originalRequest.url?.includes('/auth/refresh')) {
+        console.warn('Refresh token is invalid or expired')
+        logoutUser(true)
+        return Promise.reject(error)
+      }
+
       originalRequest._retry = true
 
-      // Don't attempt refresh if we're already refreshing
+      // If we're already refreshing, queue this request
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         }).then(token => {
-          if (originalRequest.headers) {
+          if (originalRequest.headers && token) {
             originalRequest.headers.Authorization = `Bearer ${token}`
           }
           return api(originalRequest)
@@ -97,24 +134,41 @@ api.interceptors.response.use(
           throw new Error('No refresh token available')
         }
 
-        // Use the configured API instance for refresh instead of hardcoded URL
-        const response = await api.post('/api/auth/refresh', { 
-          refresh_token: refreshToken 
-        })
+        console.log('Attempting to refresh access token...')
 
-        const { accessToken, refreshToken: newRefreshToken } = response.data
-        setAuthToken(accessToken)
+        // Attempt to refresh the access token
+        const response = await axios.post(
+          `${api.defaults.baseURL}/api/auth/refresh`,
+          { refresh_token: refreshToken },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            timeout: 10000,
+          }
+        )
+
+        // Extract new tokens from response
+        const { access_token, refresh_token: newRefreshToken } = response.data
         
+        if (!access_token) {
+          throw new Error('No access token received from refresh endpoint')
+        }
+
+        // Store new tokens
+        setAccessToken(access_token)
         if (newRefreshToken) {
           setRefreshToken(newRefreshToken)
         }
 
-        // Process the queue of failed requests
-        processQueue(null, accessToken)
+        console.log('Access token refreshed successfully')
+
+        // Process the queue of failed requests with new token
+        processQueue(null, access_token)
 
         // Retry the original request with the new token
         if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`
+          originalRequest.headers.Authorization = `Bearer ${access_token}`
         }
         return api(originalRequest)
 
@@ -124,8 +178,8 @@ api.interceptors.response.use(
         // Process the queue with error
         processQueue(refreshError)
         
-        // Only clear tokens if refresh actually failed
-        clearTokens()
+        // Clear tokens and logout user
+        logoutUser(true)
         
         return Promise.reject(refreshError)
       } finally {
@@ -133,13 +187,13 @@ api.interceptors.response.use(
       }
     }
 
-    // Don't auto-redirect for 404 errors or other non-auth errors
-    if (error.response?.status === 404) {
-      console.warn('Resource not found:', error.config?.url)
-    }
-
+    // For other errors, just reject without special handling
     return Promise.reject(error)
   }
 )
+
+// Legacy token management functions for backward compatibility
+export const getAuthToken = getAccessToken
+export const setAuthToken = setAccessToken
 
 export default api

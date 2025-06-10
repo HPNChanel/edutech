@@ -23,6 +23,7 @@ import { AlertTriangle, BookOpen, RefreshCw } from 'lucide-react'
 import CategoriesPage from './pages/CategoriesPage'
 import MyLessonsPage from './pages/MyLessonsPage'
 
+
 // Loading Component
 function AuthLoadingScreen() {
   return (
@@ -162,6 +163,7 @@ function AppRouter() {
         <Route path="notes" element={<MyNotesPage />} />
         <Route path="quizzes/:lessonId" element={<QuizPage />} />
         <Route path="quizzes" element={<div className="p-6">Quizzes - Coming Soon</div>} />
+
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

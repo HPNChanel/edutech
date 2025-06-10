@@ -1,0 +1,266 @@
+/* Lesson Content Text Selection Styles - Enhanced Coverage */
+
+.lesson-content {
+  /* Force text selection to be enabled */
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  
+  /* Ensure pointer events work */
+  pointer-events: auto !important;
+  
+  /* Text cursor for better UX */
+  cursor: text;
+}
+
+/* Ensure all child elements allow text selection with highest specificity */
+.lesson-content *,
+.lesson-content *:before,
+.lesson-content *:after {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  pointer-events: auto !important;
+}
+
+/* Override any prose styles that might conflict */
+.lesson-content.prose *,
+.lesson-content .prose * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+/* Ensure ReactMarkdown components allow selection */
+.lesson-content h1,
+.lesson-content h2,
+.lesson-content h3,
+.lesson-content h4,
+.lesson-content h5,
+.lesson-content h6,
+.lesson-content p,
+.lesson-content span,
+.lesson-content div,
+.lesson-content li,
+.lesson-content blockquote,
+.lesson-content pre,
+.lesson-content code,
+.lesson-content strong,
+.lesson-content em,
+.lesson-content a,
+.lesson-content table,
+.lesson-content th,
+.lesson-content td,
+.lesson-content tr {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  cursor: text;
+}
+
+/* Handle specific Tailwind utility classes that might override */
+.lesson-content .select-none,
+.lesson-content [class*="select-none"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Handle whitespace-pre-wrap content (like in previews) */
+.lesson-content .whitespace-pre-wrap,
+.lesson-content [class*="whitespace-pre"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  cursor: text;
+}
+
+/* Selection styling */
+.lesson-content ::selection {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.lesson-content ::-moz-selection {
+  background-color: #3b82f6;
+  color: white;
+}
+
+/* Prevent any conflicting styles from buttons or interactive elements */
+.lesson-content button,
+.lesson-content a[href],
+.lesson-content input,
+.lesson-content textarea {
+  user-select: auto;
+  cursor: pointer;
+}
+
+/* Enhanced highlights and notes styling */
+.lesson-content mark,
+.lesson-content .highlight,
+.lesson-content .note,
+.lesson-content span.highlight,
+.lesson-content span[class*="highlight"],
+.lesson-content [data-highlight-id],
+.lesson-content [data-highlight] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  cursor: text !important;
+  pointer-events: auto !important;
+  /* Ensure highlighted spans don't block underlying text selection */
+  position: relative;
+  z-index: 1;
+}
+
+/* Note highlight styling - dotted underline with subtle background */
+.lesson-content .note-highlight,
+.lesson-content [data-note-highlight] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: pointer !important;
+  position: relative;
+  transition: all 0.2s ease;
+  border-bottom: 2px dashed #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+
+.lesson-content .note-highlight:hover,
+.lesson-content [data-note-highlight]:hover {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-bottom-color: #1d4ed8;
+}
+
+/* Highlight styling - yellow background */
+.lesson-content .highlight,
+.lesson-content .highlighted-text,
+.lesson-content [data-highlight] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  background-color: #fef3c7;
+  padding: 0 2px;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.lesson-content .highlight:hover,
+.lesson-content .highlighted-text:hover,
+.lesson-content [data-highlight]:hover {
+  background-color: #fde047;
+}
+
+/* Specific highlighted-text class for newly created highlights */
+.lesson-content .highlighted-text {
+  background-color: yellow;
+  border-radius: 2px;
+  padding: 0 2px;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text !important;
+}
+
+/* Fix for any overlays that might block selection */
+.lesson-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Handle any potential iframe or embed content */
+.lesson-content iframe,
+.lesson-content embed,
+.lesson-content object {
+  pointer-events: none; /* These can't have text selection anyway */
+}
+
+/* Handle any potential pseudo-elements that might block selection */
+.lesson-content *:before,
+.lesson-content *:after {
+  pointer-events: none;
+}
+
+/* Ensure consistent text cursor throughout */
+.lesson-content,
+.lesson-content * {
+  cursor: text !important;
+}
+
+/* Override cursor for interactive note and highlight elements */
+.lesson-content .note-highlight,
+.lesson-content [data-note-highlight] {
+  cursor: pointer !important;
+}
+
+/* Override any global styles that might interfere */
+.lesson-content[style*="user-select"] {
+  user-select: text !important;
+}
+
+/* Handle edge cases with nested elements */
+.lesson-content .prose-headings\\:text-gray-900,
+.lesson-content .prose-p\\:text-gray-700,
+.lesson-content .prose-strong\\:text-gray-900,
+.lesson-content .prose-code\\:text-pink-600,
+.lesson-content .prose-code\\:bg-pink-50,
+.lesson-content .prose-pre\\:bg-gray-900,
+.lesson-content .prose-pre\\:text-gray-100 {
+  user-select: text !important;
+  cursor: text;
+}
+
+/* Highlightable Content Styles */
+.highlightable-content h1 {
+  @apply text-3xl font-bold mt-8 mb-4 first:mt-0 select-text cursor-text;
+}
+
+.highlightable-content h2 {
+  @apply text-2xl font-semibold mt-6 mb-3 select-text cursor-text;
+}
+
+.highlightable-content h3 {
+  @apply text-xl font-medium mt-4 mb-2 select-text cursor-text;
+}
+
+.highlightable-content p {
+  @apply mb-4 leading-relaxed select-text cursor-text;
+}
+
+.highlightable-content ul {
+  @apply mb-4 ml-6 list-disc select-text;
+}
+
+.highlightable-content ol {
+  @apply mb-4 ml-6 list-decimal select-text;
+}
+
+.highlightable-content li {
+  @apply mb-1 select-text cursor-text;
+}
+
+.highlightable-content code {
+  @apply px-2 py-1 bg-gray-100 text-pink-600 rounded text-sm font-mono select-text;
+}
+
+.highlightable-content pre {
+  @apply p-4 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto mb-4 select-text;
+}
+
+.highlightable-content blockquote {
+  @apply border-l-4 border-primary pl-4 italic my-4 text-gray-600 select-text cursor-text;
+}
+
+.highlightable-content .highlighted-text {
+  background-color: yellow;
+  border-radius: 2px;
+  padding: 0 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+ 

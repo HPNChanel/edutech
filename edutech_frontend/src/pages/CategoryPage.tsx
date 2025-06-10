@@ -74,12 +74,12 @@ export default function CategoryPage() {
         const lessonsData = await lessonService.getLessonsByCategory(parseInt(categoryId))
         console.log('Lessons data received:', lessonsData)
         
-        setLessons(lessonsData)
+        setLessons(Array.isArray(lessonsData) ? lessonsData : [])
         
       } catch (err: any) {
         console.error('Lessons data fetch error:', err)
         // Don't set main error state for lessons fetch failure
-        console.warn('Failed to load lessons for category:', err.message)
+        console.warn('Failed to load lessons for category:', err.message || 'Unknown error')
         setLessons([]) // Set empty array on error
       } finally {
         setIsLoadingLessons(false)

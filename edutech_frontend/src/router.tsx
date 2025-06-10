@@ -9,7 +9,7 @@ const Login = React.lazy(() => import('@/pages/Auth/Login'))
 const Register = React.lazy(() => import('@/pages/Auth/Register'))
 const ForgotPassword = React.lazy(() => import('@/pages/Auth/ForgotPassword'))
 const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'))
-const LessonPage = React.lazy(() => import('@/pages/LessonPage'))
+// const LessonPage = React.lazy(() => import('@/pages/LessonPage'))
 const CreateLessonPage = React.lazy(() => import('@/pages/CreateLessonPage'))
 const CategoryPage = React.lazy(() => import('@/pages/CategoryPage'))
 const CategoryManagement = React.lazy(() => import('@/pages/Admin/CategoryManagement'))
@@ -20,6 +20,9 @@ const ProfilePage = React.lazy(() => import('@/pages/ProfilePage'))
 const MyLessonsPage = React.lazy(() => import('@/pages/MyLessonsPage'))
 const LessonDetailPage = React.lazy(() => import('@/pages/LessonDetailPage'))
 const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'))
+
+// Debug components
+
 
 // Simple loading component
 const LoadingSpinner = () => (
@@ -194,6 +197,7 @@ export const appRouter = createBrowserRouter([
           </SuspenseWrapper>
         ),
       },
+
     ],
   },
   {
