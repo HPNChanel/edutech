@@ -16,6 +16,8 @@ import { annotationService, type Highlight } from '@/services/annotationService'
 import { getLessonContentClasses, getLessonContentStyles } from '@/lib/textSelection'
 
 import { HighlightableMarkdown } from '@/components/HighlightableMarkdown'
+import { SidebarNoteForm } from '@/components/SidebarNoteForm'
+import { useTextSelectionListener } from '@/hooks/useTextSelectionListener'
 
 const LessonDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -29,6 +31,10 @@ const LessonDetailPage: React.FC = () => {
   
   const contentRef = useRef<HTMLDivElement>(null)
   const restorationApplied = useRef(false)
+
+  // Text selection state for sidebar
+  const [selectedText, setSelectedText] = useState('')
+  useTextSelectionListener(setSelectedText, '.lesson-content')
 
 
 
@@ -84,6 +90,23 @@ const LessonDetailPage: React.FC = () => {
 
   // Note: Text offset functions temporarily removed due to interface conflicts
   // These will be reimplemented when backend interfaces are unified
+
+  // Function to refresh data after note/highlight creation
+  const refreshData = async () => {
+    if (!id) return
+    
+    try {
+      const [highlightsData, notesData] = await Promise.all([
+        annotationService.getHighlightsByLesson(parseInt(id)),
+        noteService.getNotesByLesson(id)
+      ])
+      
+      setHighlights(highlightsData)
+      setNotes(notesData)
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+    }
+  }
 
   // Function to restore notes and highlights in the content
   const restoreNotesAndHighlights = () => {
@@ -154,7 +177,17 @@ const LessonDetailPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
+      {/* Sidebar for note/highlight creation */}
+      {lesson && (
+        <SidebarNoteForm
+          lessonId={lesson.id}
+          selectedText={selectedText}
+          onNoteSaved={refreshData}
+          onHighlightSaved={refreshData}
+        />
+      )}
+      
+      <div className="max-w-4xl mx-auto md:mr-[340px]">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -255,7 +288,7 @@ const LessonDetailPage: React.FC = () => {
           <CardContent className="p-0">
             <div
               ref={contentRef}
-              className={`${getLessonContentClasses()} p-6`}
+              className={`${getLessonContentClasses()} lesson-content p-6`}
               style={getLessonContentStyles()}
             >
               <HighlightableMarkdown
