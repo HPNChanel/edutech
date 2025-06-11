@@ -20,7 +20,6 @@ import { processMarkdownWithHighlights } from '@/lib/highlightUtils'
 
 import { SidebarNoteForm } from '@/components/SidebarNoteForm'
 import { useTextSelectionData } from '@/hooks/useTextSelectionData'
-import { AIInlineAssistant } from '../components/AIInlineAssistant'
 
 const LessonDetailPage: React.FC = () => {
   // Extract lessonId from URL params with proper typing and validation
@@ -36,10 +35,6 @@ const LessonDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  
-  // AI Assistant state
-  const [showAIAssistant, setShowAIAssistant] = useState(false)
-  const [aiAssistantPosition, setAIAssistantPosition] = useState({ x: 0, y: 0 })
   
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -60,25 +55,12 @@ const LessonDetailPage: React.FC = () => {
       const selectionData = captureSelection()
       console.log('Selection data captured:', selectionData)
       
-      // Show AI assistant if text is selected
       if (selectionData && selectionData.selectedText.trim().length > 0) {
-        console.log('Showing AI assistant for text:', selectionData.selectedText.substring(0, 50) + '...')
-        setAIAssistantPosition({ x: event.clientX, y: event.clientY })
-        setShowAIAssistant(true)
+        console.log('Text selected for highlighting/notes:', selectionData.selectedText.substring(0, 50) + '...')
       } else {
         console.log('No valid text selected')
       }
     }, 50)
-  }
-
-  const handleCloseAIAssistant = () => {
-    setShowAIAssistant(false)
-    clearSelection()
-  }
-
-  const handleAIAssistanceGenerated = (result: string, action: string) => {
-    console.log('AI assistance generated:', { action, result })
-    // You can add additional handling here, like showing a notification
   }
 
   useEffect(() => {
@@ -269,6 +251,7 @@ const LessonDetailPage: React.FC = () => {
       {lesson && (
         <SidebarNoteForm
           lessonId={lesson.id}
+          lessonTitle={lesson.title}
           currentSelection={currentSelection}
           onNoteSaved={refreshData}
           onHighlightSaved={refreshData}
@@ -363,6 +346,8 @@ const LessonDetailPage: React.FC = () => {
             </Button>
           </Link>
 
+
+
           <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogTrigger asChild>
               <Button variant="destructive" disabled={isDeleting}>
@@ -411,6 +396,10 @@ const LessonDetailPage: React.FC = () => {
               {hasSelection && (
                 <span className="ml-2 text-green-600">• Text selected</span>
               )}
+              <br />
+              <span className="text-xs text-gray-500">
+                Select text to create highlights, notes, or get AI assistance from the sidebar
+              </span>
             </p>
           </CardHeader>
           <CardContent className="p-0">
@@ -429,17 +418,7 @@ const LessonDetailPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* AI Inline Assistant */}
-        {showAIAssistant && currentSelection && (
-          <AIInlineAssistant
-            selectedText={currentSelection.selectedText}
-            lessonId={lesson.id}
-            lessonContext={lesson.title}
-            position={aiAssistantPosition}
-            onClose={handleCloseAIAssistant}
-            onAssistanceGenerated={handleAIAssistanceGenerated}
-          />
-        )}
+
 
         {/* Navigation Footer */}
         <div className="mt-12 pt-8 border-t">

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     
     # OpenAI Configuration
-    OPENAI_API_KEY: str = "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"  # Set this in .env file
+    OPENAI_API_KEY: str = "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"  # Set this in .env file
     OPENAI_MODEL: str = "gpt-3.5-turbo"
     OPENAI_MAX_TOKENS: int = 150  # Limit tokens for cost optimization
     OPENAI_TEMPERATURE: float = 0.7

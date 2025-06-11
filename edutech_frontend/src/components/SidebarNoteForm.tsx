@@ -3,12 +3,15 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Highlighter, StickyNote, Loader2 } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import { Highlighter, StickyNote, Loader2, Brain, MessageSquare, Languages, HelpCircle } from 'lucide-react'
 import { annotationService } from '@/services/annotationService'
+import { aiAssistanceService } from '../services/aiAssistanceService'
 import { type TextSelectionData } from '@/hooks/useTextSelectionData'
 
 interface SidebarNoteFormProps {
   lessonId: number
+  lessonTitle?: string
   currentSelection: TextSelectionData | null
   onNoteSaved?: () => void
   onHighlightSaved?: () => void
@@ -17,6 +20,7 @@ interface SidebarNoteFormProps {
 
 export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
   lessonId,
+  lessonTitle,
   currentSelection,
   onNoteSaved,
   onHighlightSaved,
@@ -25,6 +29,10 @@ export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
   const [noteContent, setNoteContent] = useState('')
   const [isCreatingHighlight, setIsCreatingHighlight] = useState(false)
   const [isCreatingNote, setIsCreatingNote] = useState(false)
+  
+  // AI assistance state
+  const [isLoadingAI, setIsLoadingAI] = useState(false)
+  const [aiAction, setAiAction] = useState<string | null>(null)
 
   const hasSelectedText = currentSelection && currentSelection.selectedText && currentSelection.selectedText.length > 0
   const selectedText = currentSelection?.selectedText || ''
@@ -32,6 +40,40 @@ export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
   // Protection to avoid losing selection - only for buttons, not input elements
   const preventSelectionLoss = (e: React.MouseEvent) => {
     e.preventDefault()
+  }
+
+  // AI assistance handler
+  const handleAIAssistance = async (action: 'explanation' | 'summary' | 'translate_vi' | 'translate_en' | 'ask_questions') => {
+    if (!hasSelectedText || !currentSelection) {
+      alert('Please select text first')
+      return
+    }
+
+    try {
+      setIsLoadingAI(true)
+      setAiAction(action)
+      
+      const response = await aiAssistanceService.getInlineAssistance({
+        text: currentSelection.selectedText,
+        action: action,
+        context: lessonTitle || '',
+        lesson_id: lessonId
+      })
+      
+      // Auto-populate note with AI result
+      setNoteContent(prev => {
+        const actionLabel = action.replace('_', ' ').toUpperCase()
+        const newContent = `${actionLabel}:\n${response.result}`
+        return prev ? `${prev}\n\n${newContent}` : newContent
+      })
+      
+    } catch (error) {
+      console.error('AI assistance error:', error)
+      alert('Failed to get AI assistance. Please try again.')
+    } finally {
+      setIsLoadingAI(false)
+      setAiAction(null)
+    }
   }
 
   const handleCreateHighlight = async () => {
@@ -191,6 +233,96 @@ export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
               {noteContent.length}/256 characters
             </div>
           </div>
+
+          {/* AI Assistance Section */}
+          {hasSelectedText && (
+            <div className="space-y-3">
+              <Separator />
+              <Label className="text-sm font-medium text-blue-700">🤖 AI Assistance</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={() => handleAIAssistance('explanation')}
+                  disabled={isLoadingAI}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onMouseDown={preventSelectionLoss}
+                >
+                  {isLoadingAI && aiAction === 'explanation' ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <Brain className="mr-1 h-3 w-3" />
+                  )}
+                  Explain
+                </Button>
+                
+                <Button
+                  onClick={() => handleAIAssistance('summary')}
+                  disabled={isLoadingAI}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onMouseDown={preventSelectionLoss}
+                >
+                  {isLoadingAI && aiAction === 'summary' ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <MessageSquare className="mr-1 h-3 w-3" />
+                  )}
+                  Summary
+                </Button>
+                
+                <Button
+                  onClick={() => handleAIAssistance('translate_vi')}
+                  disabled={isLoadingAI}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onMouseDown={preventSelectionLoss}
+                >
+                  {isLoadingAI && aiAction === 'translate_vi' ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <Languages className="mr-1 h-3 w-3" />
+                  )}
+                  VN
+                </Button>
+                
+                <Button
+                  onClick={() => handleAIAssistance('translate_en')}
+                  disabled={isLoadingAI}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onMouseDown={preventSelectionLoss}
+                >
+                  {isLoadingAI && aiAction === 'translate_en' ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <Languages className="mr-1 h-3 w-3" />
+                  )}
+                  EN
+                </Button>
+                
+                <Button
+                  onClick={() => handleAIAssistance('ask_questions')}
+                  disabled={isLoadingAI}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs col-span-2"
+                  onMouseDown={preventSelectionLoss}
+                >
+                  {isLoadingAI && aiAction === 'ask_questions' ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <HelpCircle className="mr-1 h-3 w-3" />
+                  )}
+                  Study Questions
+                </Button>
+              </div>
+              <Separator />
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="space-y-3 pt-2">

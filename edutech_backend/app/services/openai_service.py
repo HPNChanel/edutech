@@ -268,7 +268,7 @@ Keep each section concise but actionable. Focus on educational growth and person
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                max_tokens=100,  # Adequate tokens for 4 detailed sections
+                max_tokens=500,  # Adequate tokens for 4 detailed sections
                 temperature=0.6,
                 stream=False
             )
