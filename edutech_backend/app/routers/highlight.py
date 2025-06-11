@@ -1,5 +1,5 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -13,6 +13,47 @@ from app.schemas.note import Note as NoteSchema, NoteCreate
 from app.utils.auth import get_current_active_user
 
 router = APIRouter(prefix="/highlights", tags=["highlights"])
+
+@router.get("/", response_model=List[HighlightSchema])
+async def get_highlights_by_lesson(
+    lesson_id: int = Query(..., description="ID of the lesson to get highlights for"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get all highlights for a specific lesson
+    
+    Args:
+        lesson_id: ID of the lesson to retrieve highlights for
+        
+    Returns:
+        List of highlights belonging to the current user for the specified lesson
+        
+    Raises:
+        404: If lesson not found or doesn't belong to user
+    """
+    # Check if lesson exists and belongs to user
+    result = await db.execute(
+        select(Lesson).where(
+            Lesson.id == lesson_id,
+            Lesson.user_id == current_user.id
+        )
+    )
+    lesson = result.scalar_one_or_none()
+    if not lesson:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lesson not found or access denied"
+        )
+    
+    # Get highlights for the lesson
+    result = await db.execute(
+        select(Highlight).where(
+            Highlight.lesson_id == lesson_id,
+            Highlight.user_id == current_user.id
+        ).order_by(Highlight.created_at)
+    )
+    return result.scalars().all()
 
 @router.post("/", response_model=HighlightSchema)
 async def create_highlight(

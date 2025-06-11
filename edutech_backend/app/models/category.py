@@ -14,3 +14,5 @@ class Category(Base):
     # Relationships
     user = relationship("User", back_populates="categories")
     lessons = relationship("Lesson", back_populates="category", cascade="all, delete-orphan")
+    notes = relationship("Note", back_populates="category", cascade="all, delete-orphan")
+    highlights = relationship("Highlight", back_populates="category", cascade="all, delete-orphan")

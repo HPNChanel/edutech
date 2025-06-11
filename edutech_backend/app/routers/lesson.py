@@ -70,7 +70,10 @@ async def get_lessons(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    query = select(Lesson).where(Lesson.user_id == current_user.id)
+    query = select(Lesson).options(
+        joinedload(Lesson.category),
+        joinedload(Lesson.user)
+    ).where(Lesson.user_id == current_user.id)
     if category_id:
         query = query.where(Lesson.category_id == category_id)
     
@@ -89,7 +92,10 @@ async def get_my_lessons(
     """
     Get all lessons for the current user with optional filtering
     """
-    query = select(Lesson).options(joinedload(Lesson.category)).where(
+    query = select(Lesson).options(
+        joinedload(Lesson.category),
+        joinedload(Lesson.user)
+    ).where(
         Lesson.user_id == current_user.id
     )
     
@@ -118,7 +124,10 @@ async def get_lesson(
 ):
     # Check if lesson exists and belongs to user
     result = await db.execute(
-        select(Lesson).options(joinedload(Lesson.category)).where(
+        select(Lesson).options(
+            joinedload(Lesson.category),
+            joinedload(Lesson.user)
+        ).where(
             Lesson.id == lesson_id,
             Lesson.user_id == current_user.id
         )

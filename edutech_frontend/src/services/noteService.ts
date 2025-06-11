@@ -12,6 +12,7 @@ export interface Note {
   lineNumber?: number
   createdAt: string
   updatedAt: string
+  lessonTitle?: string  // Title of the lesson this note belongs to
 }
 
 // Create Note Interfaces
@@ -83,12 +84,49 @@ interface ApiResponse<T> {
 type OptimisticUpdateCallback<T> = (data: T) => void
 type RollbackCallback = () => void
 
+// Type for backend note data structure
+interface BackendNote {
+  id: string | number;
+  lesson_id: string | number;
+  user_id?: string | number;
+  content: string;
+  text?: string;
+  selected_text?: string;
+  position?: number;
+  line_number?: number;
+  start_offset?: number;
+  end_offset?: number;
+  created_at: string;
+  updated_at: string;
+  lesson_title?: string;
+}
+
 /**
  * Note Service Class
  * Handles all note-related API operations with optimistic updates
  */
 class NoteService {
-  private readonly baseEndpoint = '/notes' // ! DO NOT CHANGE THIS, IT IS USED IN BACKEND
+  private readonly baseEndpoint = '/notes'
+
+  /**
+   * Transform backend note data to frontend Note interface
+   * @param backendNote - Note data from backend
+   * @returns Transformed Note object
+   */
+  private transformBackendNote(backendNote: BackendNote): Note {
+    return {
+      id: String(backendNote.id),
+      lessonId: String(backendNote.lesson_id),
+      userId: String(backendNote.user_id || 'unknown'),
+      content: backendNote.content,
+      selectedText: backendNote.selected_text || backendNote.text,
+      position: backendNote.position || backendNote.start_offset,
+      lineNumber: backendNote.line_number,
+      createdAt: backendNote.created_at,
+      updatedAt: backendNote.updated_at,
+      lessonTitle: backendNote.lesson_title
+    };
+  }
 
   /**
    * Get all notes for the current user
@@ -110,22 +148,23 @@ class NoteService {
         ? `${this.baseEndpoint}?${queryParams.toString()}`
         : this.baseEndpoint
 
-      const response: AxiosResponse<Note[]> = await api.get(url)
+      const response: AxiosResponse<BackendNote[]> = await api.get(url)
 
-      // Backend returns array directly, not wrapped in ApiResponse
-      return response.data || []
-    } catch (error: any) {
+      // Transform backend data to frontend Note interface
+      const backendNotes = response.data || []
+      return backendNotes.map(note => this.transformBackendNote(note))
+    } catch (error: unknown) {
       console.error('Get all notes error:', error)
       
-      if (error.response?.status === 401) {
-        throw new Error('Authentication required. Please log in again.')
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response: { status: number } }
+        if (axiosError.response?.status === 401) {
+          throw new Error('Authentication required. Please log in again.')
+        }
       }
       
-      throw new Error(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to fetch notes. Please try again.'
-      )
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch notes. Please try again.'
+      throw new Error(errorMessage)
     }
   }
 
@@ -334,13 +373,9 @@ class NoteService {
         throw new Error('Note ID is required')
       }
 
-      const response: AxiosResponse<{ message: string }> = await api.delete(
+      await api.delete(
         `${this.baseEndpoint}/${noteId}`
       )
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to delete note')
-      }
     } catch (error: any) {
       console.error('Delete note error:', error)
       
@@ -430,16 +465,12 @@ class NoteService {
         throw new Error('At least one note ID is required')
       }
 
-      const response: AxiosResponse<{ message: string; deletedCount: number }> = await api.delete(
+      await api.delete(
         `${this.baseEndpoint}/bulk`,
         {
           data: { note_ids: noteIds }
         }
       )
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to delete notes')
-      }
     } catch (error: any) {
       console.error('Bulk delete notes error:', error)
       
@@ -504,17 +535,7 @@ class NoteService {
 // Export singleton instance
 export const noteService = new NoteService()
 
-// Export types for use in components
-export type {
-  Note,
-  CreateNoteData,
-  CreateNoteResponse,
-  UpdateNoteData,
-  UpdateNoteResponse,
-  NotesListResponse,
-  GetNotesParams,
-  NoteServiceError
-}
+// Export types for use in components are already exported above as interfaces
 
 // Export default
 export default noteService

@@ -114,6 +114,13 @@ async def login_user(user_login: UserLogin, db: AsyncSession = Depends(get_db)):
             detail="Incorrect email or password"
         )
     
+    # Check if user account is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled. Please contact support."
+        )
+    
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -152,6 +159,14 @@ async def login_user_form(form_data: OAuth2PasswordRequestForm = Depends(), db: 
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Check if user account is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled. Please contact support.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
@@ -161,7 +176,14 @@ async def login_user_form(form_data: OAuth2PasswordRequestForm = Depends(), db: 
 
 @router.get("/me")
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
-    """Get current user information"""
+    """
+    Get current user information
+    
+    Returns:
+        200: User data if token is valid and user is active
+        401: If token is invalid, expired, or user not found
+        403: If user exists but is inactive/disabled
+    """
     return {
         "success": True,
         "user": {
@@ -233,6 +255,13 @@ async def refresh_token(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found"
+            )
+        
+        # Check if user account is active
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is disabled. Please contact support."
             )
         
         # Create new access token

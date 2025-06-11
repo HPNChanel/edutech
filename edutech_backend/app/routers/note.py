@@ -2,13 +2,14 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import get_db
 from app.models.user import User
 from app.models.note import Note
 from app.models.lesson import Lesson
-from app.schemas.note import Note as NoteSchema, NoteCreate, NoteUpdate
+from app.schemas.note import Note as NoteSchema, NoteCreate, NoteUpdate, NoteWithLesson
 from app.utils.auth import get_current_active_user
 
 router = APIRouter(prefix="/notes", tags=["notes"])
@@ -46,17 +47,25 @@ async def create_note(
     await db.refresh(db_note)
     return db_note
 
-@router.get("/", response_model=List[NoteSchema])
+@router.get("/", response_model=List[NoteWithLesson])
 async def get_all_notes(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     result = await db.execute(
-        select(Note).where(
-            Note.user_id == current_user.id
-        )
+        select(Note, Lesson.title.label("lesson_title"))
+        .join(Lesson, Note.lesson_id == Lesson.id, isouter=True)
+        .where(Note.user_id == current_user.id)
+        .order_by(Note.created_at.desc())
     )
-    return result.scalars().all()
+    
+    notes_with_lessons = []
+    for note, lesson_title in result:
+        note_dict = note.__dict__.copy()
+        note_dict['lesson_title'] = lesson_title
+        notes_with_lessons.append(NoteWithLesson(**note_dict))
+    
+    return notes_with_lessons
 
 @router.get("/lesson/{lesson_id}", response_model=List[NoteSchema])
 async def get_lesson_notes(

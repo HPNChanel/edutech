@@ -24,6 +24,7 @@ class Lesson(LessonBase):
     user_id: int
     created_at: datetime
     updated_at: datetime
+    user: Optional['UserBase'] = None
 
 class LessonWithStats(Lesson):
     """Extended lesson schema with additional statistics"""
@@ -58,5 +59,7 @@ class LessonSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 # Forward reference resolution
+from app.schemas.user import UserBase
 from app.schemas.category import Category as CategorySchema
+Lesson.model_rebuild()
 LessonWithCategory.model_rebuild()

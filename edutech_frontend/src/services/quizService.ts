@@ -187,8 +187,8 @@ type RollbackCallback = () => void
  * Handles all quiz-related API operations
  */
 class QuizService {
-  private readonly baseEndpoint = '/api/quiz' // Add /api prefix
-  private readonly attemptsEndpoint = '/api/quiz/attempts' // Add attempts endpoint
+  private readonly baseEndpoint = '/quiz'
+  private readonly attemptsEndpoint = '/quiz/attempts'
 
   /**
    * Get a quiz by ID with all questions and details

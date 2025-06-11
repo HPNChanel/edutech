@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } f
 
 // Create axios instance with base configuration
 export const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000', // Use backend URL
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api', // Include /api prefix
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -138,7 +138,7 @@ api.interceptors.response.use(
 
         // Attempt to refresh the access token
         const response = await axios.post(
-          `${api.defaults.baseURL}/api/auth/refresh`,
+          `${api.defaults.baseURL}/auth/refresh`,
           { refresh_token: refreshToken },
           {
             headers: {

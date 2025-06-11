@@ -33,6 +33,7 @@ export interface HighlightCreateRequest {
   color: HighlightColor
   start_offset: number
   end_offset: number
+  category_id?: number
 }
 
 export interface NoteCreateRequest {
@@ -66,7 +67,35 @@ export const annotationService = {
 
   // Create a new highlight
   createHighlight: async (lessonId: number, data: HighlightCreateRequest): Promise<Highlight> => {
-    const response = await api.post(`/lessons/${lessonId}/highlights`, data)
+    // Validate required fields before sending
+    if (!data.text || data.text.trim().length === 0) {
+      throw new Error("Text is required and cannot be empty")
+    }
+    
+    if (data.start_offset === undefined || data.end_offset === undefined) {
+      throw new Error("Start and end offsets are required")
+    }
+    
+    if (data.start_offset < 0 || data.end_offset < 0) {
+      throw new Error("Offsets cannot be negative")
+    }
+    
+    if (data.start_offset >= data.end_offset) {
+      throw new Error("Start offset must be less than end offset")
+    }
+
+    // Ensure color is a simple string value
+    const payload = {
+      text: data.text.trim(),
+      color: data.color as string, // Convert enum to string if needed
+      start_offset: data.start_offset,
+      end_offset: data.end_offset,
+      ...(data.category_id && { category_id: data.category_id })
+    }
+
+    console.log('📤 Sending highlight payload:', payload)
+    
+    const response = await api.post(`/lessons/${lessonId}/highlights`, payload)
     return response.data
   },
 

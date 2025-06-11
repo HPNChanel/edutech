@@ -20,6 +20,9 @@ const ProfilePage = React.lazy(() => import('@/pages/ProfilePage'))
 const MyLessonsPage = React.lazy(() => import('@/pages/MyLessonsPage'))
 const LessonDetailPage = React.lazy(() => import('@/pages/LessonDetailPage'))
 const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'))
+const ChatPage = React.lazy(() => import('@/pages/ChatPage'))
+const FocusPage = React.lazy(() => import('@/pages/FocusPage'))
+const LearningGoalsPage = React.lazy(() => import('@/pages/LearningGoalsPage'))
 
 // Debug components
 
@@ -94,14 +97,6 @@ export const appRouter = createBrowserRouter([
         ),
       },
       {
-        path: "lessons/:id",
-        element: (
-          <SuspenseWrapper>
-            <LessonDetailPage />
-          </SuspenseWrapper>
-        ),
-      },
-      {
         path: "my-lessons",
         element: (
           <SuspenseWrapper>
@@ -122,6 +117,14 @@ export const appRouter = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <div className="p-6">Edit Lesson - Coming Soon</div>
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: "lessons/:lessonId",
+        element: (
+          <SuspenseWrapper>
+            <LessonDetailPage />
           </SuspenseWrapper>
         ),
       },
@@ -194,6 +197,30 @@ export const appRouter = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <SettingsPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: "chat",
+        element: (
+          <SuspenseWrapper>
+            <ChatPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: "focus",
+        element: (
+          <SuspenseWrapper>
+            <FocusPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: "goals",
+        element: (
+          <SuspenseWrapper>
+            <LearningGoalsPage />
           </SuspenseWrapper>
         ),
       },

@@ -5,54 +5,103 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Highlighter, StickyNote, Loader2 } from 'lucide-react'
 import { annotationService } from '@/services/annotationService'
-import { noteService } from '@/services/noteService'
+import { type TextSelectionData } from '@/hooks/useTextSelectionData'
 
 interface SidebarNoteFormProps {
   lessonId: number
-  selectedText: string
+  currentSelection: TextSelectionData | null
   onNoteSaved?: () => void
   onHighlightSaved?: () => void
+  onSelectionCleared?: () => void
 }
 
 export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
   lessonId,
-  selectedText,
+  currentSelection,
   onNoteSaved,
-  onHighlightSaved
+  onHighlightSaved,
+  onSelectionCleared
 }) => {
   const [noteContent, setNoteContent] = useState('')
   const [isCreatingHighlight, setIsCreatingHighlight] = useState(false)
   const [isCreatingNote, setIsCreatingNote] = useState(false)
 
-  const hasSelectedText = selectedText && selectedText.length > 0
+  const hasSelectedText = currentSelection && currentSelection.selectedText && currentSelection.selectedText.length > 0
+  const selectedText = currentSelection?.selectedText || ''
+
+  // Protection to avoid losing selection - only for buttons, not input elements
+  const preventSelectionLoss = (e: React.MouseEvent) => {
+    e.preventDefault()
+  }
 
   const handleCreateHighlight = async () => {
-    if (!hasSelectedText) {
-      alert('Please select text first')
+    // Enhanced validation as suggested in the requirements
+    if (!currentSelection || !currentSelection.selectedText) {
+      alert('Please select text from the lesson content to create highlights')
+      return
+    }
+
+    const { selectedText: text, start_offset, end_offset, blockId } = currentSelection
+
+    // Validate all required fields exist and are valid
+    if (!text.trim()) {
+      alert('Selected text cannot be empty')
+      return
+    }
+
+    if (start_offset < 0 || end_offset <= start_offset) {
+      alert('Invalid text selection. Please try selecting text again.')
+      console.error('Invalid selection offsets:', { start_offset, end_offset, text })
       return
     }
 
     try {
       setIsCreatingHighlight(true)
       
+      console.log('🚀 Creating highlight with data:', {
+        text: text.substring(0, 50) + '...',
+        start_offset,
+        end_offset,
+        blockId,
+        lesson_id: lessonId,
+        color: 'yellow'
+      })
+      
       await annotationService.createHighlight(lessonId, {
-        text: selectedText,
+        text,
         color: 'yellow',
-        start_offset: 0, // TODO: Calculate actual offsets when needed
-        end_offset: selectedText.length
+        start_offset,
+        end_offset
       })
 
-      // Clear selection after successful highlight
-      window.getSelection()?.removeAllRanges()
-      
       onHighlightSaved?.()
       
+      // Clear selection after successful highlight
+      onSelectionCleared?.()
+      
       // Show success feedback
+      console.log('✅ Highlight created successfully!')
       alert('Highlight created successfully!')
       
-    } catch (error) {
-      console.error('Error creating highlight:', error)
-      alert('Failed to create highlight. Please try again.')
+    } catch (error: unknown) {
+      console.error('❌ Error creating highlight:', error)
+      
+      // Provide more specific error messages
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: { detail?: string } } }
+        if (axiosError.response?.status === 400) {
+          const errorMessage = axiosError.response?.data?.detail || 'Invalid highlight data'
+          alert(`Failed to create highlight: ${errorMessage}`)
+        } else if (axiosError.response?.status === 401) {
+          alert('You must be logged in to create highlights')
+        } else if (axiosError.response?.status === 404) {
+          alert('Lesson not found')
+        } else {
+          alert('Failed to create highlight. Please try again.')
+        }
+      } else {
+        alert('Failed to create highlight. Please try again.')
+      }
     } finally {
       setIsCreatingHighlight(false)
     }
@@ -69,20 +118,26 @@ export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
       return
     }
 
+    if (!currentSelection) {
+      alert('Selection data is missing')
+      return
+    }
+
     try {
       setIsCreatingNote(true)
       
-      await noteService.createNote({
-        lesson_id: lessonId.toString(),
+      // Create note with offset data for better backend integration
+      await annotationService.createNote(lessonId, {
         content: noteContent.trim(),
-        selected_text: selectedText
+        text: currentSelection.selectedText,
+        start_offset: currentSelection.start_offset,
+        end_offset: currentSelection.end_offset
       })
 
       // Clear form and selection after successful save
       setNoteContent('')
-      window.getSelection()?.removeAllRanges()
-      
       onNoteSaved?.()
+      onSelectionCleared?.()
       
       // Show success feedback
       alert('Note saved successfully!')
@@ -144,6 +199,7 @@ export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
               disabled={!hasSelectedText || isCreatingHighlight}
               className="w-full"
               variant="outline"
+              onMouseDown={preventSelectionLoss}
             >
               {isCreatingHighlight ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -157,6 +213,7 @@ export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
               onClick={handleSaveNote}
               disabled={!hasSelectedText || !noteContent.trim() || isCreatingNote}
               className="w-full"
+              onMouseDown={preventSelectionLoss}
             >
               {isCreatingNote ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -167,9 +224,22 @@ export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
             </Button>
           </div>
 
-          {!hasSelectedText && (
+          {/* Selection Status Feedback */}
+          {!hasSelectedText ? (
             <div className="text-sm text-gray-500 text-center p-4 bg-gray-50 rounded">
               Select text from the lesson content to create notes or highlights
+            </div>
+          ) : (
+            <div className="text-sm text-green-600 text-center p-2 bg-green-50 rounded border border-green-200">
+              ✅ Text selected ({selectedText.length} characters)
+              {currentSelection?.start_offset !== undefined && (
+                <div className="text-xs text-green-500 mt-1">
+                  Offsets: {currentSelection.start_offset} - {currentSelection.end_offset}
+                  {currentSelection.blockId && (
+                    <span className="ml-2">| Block: {currentSelection.blockId}</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -206,6 +276,7 @@ export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
               className="flex-1"
               variant="outline"
               size="sm"
+              onMouseDown={preventSelectionLoss}
             >
               {isCreatingHighlight ? (
                 <Loader2 className="mr-1 h-3 w-3 animate-spin" />
@@ -220,6 +291,7 @@ export const SidebarNoteForm: React.FC<SidebarNoteFormProps> = ({
               disabled={!hasSelectedText || !noteContent.trim() || isCreatingNote}
               className="flex-1"
               size="sm"
+              onMouseDown={preventSelectionLoss}
             >
               {isCreatingNote ? (
                 <Loader2 className="mr-1 h-3 w-3 animate-spin" />

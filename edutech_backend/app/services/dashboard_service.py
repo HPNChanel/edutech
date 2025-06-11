@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, distinct
 import logging
@@ -7,6 +7,7 @@ from app.models.user import User
 from app.models.lesson import Lesson
 from app.models.note import Note
 from app.models.category import Category
+from app.models.focus import FocusSession
 
 logger = logging.getLogger(__name__)
 
@@ -297,3 +298,98 @@ class DashboardService:
         except Exception as e:
             logger.error(f"Error getting lessons progress for user {user_id}: {str(e)}")
             raise Exception(f"Failed to retrieve lessons progress: {str(e)}")
+    
+    @staticmethod
+    async def get_learning_streak(db: AsyncSession, user_id: int) -> int:
+        """Calculate consecutive learning days based on focus sessions and note creation"""
+        try:
+            logger.info(f"Calculating learning streak for user {user_id}")
+            
+            # Get unique dates when user was active (created notes or completed focus sessions)
+            activity_dates = set()
+            
+            # Get dates from focus sessions
+            focus_query = (
+                select(func.date(FocusSession.started_at))
+                .where(FocusSession.user_id == user_id)
+                .distinct()
+            )
+            focus_result = await db.execute(focus_query)
+            for row in focus_result:
+                activity_dates.add(row[0])
+            
+            # Get dates from note creation
+            note_query = (
+                select(func.date(Note.created_at))
+                .where(Note.user_id == user_id)
+                .distinct()
+            )
+            note_result = await db.execute(note_query)
+            for row in note_result:
+                activity_dates.add(row[0])
+            
+            if not activity_dates:
+                return 0
+            
+            # Sort dates in descending order
+            sorted_dates = sorted(activity_dates, reverse=True)
+            today = date.today()
+            streak = 0
+            
+            # Check if user was active today or yesterday (allow for timezone differences)
+            if sorted_dates[0] >= today - timedelta(days=1):
+                # Start counting streak
+                expected_date = sorted_dates[0]
+                for activity_date in sorted_dates:
+                    if activity_date == expected_date:
+                        streak += 1
+                        expected_date -= timedelta(days=1)
+                    else:
+                        break
+            
+            return streak
+            
+        except Exception as e:
+            logger.error(f"Error calculating learning streak for user {user_id}: {str(e)}")
+            return 0
+    
+    @staticmethod
+    async def get_monthly_learning_time(db: AsyncSession, user_id: int) -> dict:
+        """Calculate total learning time for current month in minutes and format it"""
+        try:
+            logger.info(f"Calculating monthly learning time for user {user_id}")
+            
+            # Get start of current month
+            today = date.today()
+            start_of_month = date(today.year, today.month, 1)
+            
+            # Get completed focus sessions from this month
+            query = (
+                select(func.sum(FocusSession.actual_duration_minutes))
+                .where(
+                    and_(
+                        FocusSession.user_id == user_id,
+                        FocusSession.is_completed == True,
+                        func.date(FocusSession.started_at) >= start_of_month
+                    )
+                )
+            )
+            
+            result = await db.execute(query)
+            total_minutes = result.scalar() or 0
+            
+            # Convert to hours and minutes
+            hours = total_minutes // 60
+            minutes = total_minutes % 60
+            
+            return {
+                "total_minutes": total_minutes,
+                "formatted_time": f"{hours}h {minutes:02d}min"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating monthly learning time for user {user_id}: {str(e)}")
+            return {
+                "total_minutes": 0,
+                "formatted_time": "0h 00min"
+            }

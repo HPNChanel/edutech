@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -25,13 +24,18 @@ import {
   ExternalLink
 } from 'lucide-react'
 
+// Type for notes that might come from backend with different field structure
+type NoteWithBackendFields = Note & {
+  lesson_id?: string | number;
+};
+
 interface NotesPageState {
-  notes: Note[]
-  filteredNotes: Note[]
+  notes: NoteWithBackendFields[]
+  filteredNotes: NoteWithBackendFields[]
   isLoading: boolean
   error: string | null
   searchQuery: string
-  editingNote: Note | null
+  editingNote: NoteWithBackendFields | null
   isEditDialogOpen: boolean
   isUpdating: boolean
 }
@@ -54,6 +58,11 @@ export default function MyNotesPage() {
     content: ''
   })
 
+  // Utility function to safely get lesson ID from note
+  const getLessonId = (note: NoteWithBackendFields): string | number | null => {
+    return note.lessonId || note.lesson_id || null;
+  };
+
   const fetchNotes = async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }))
@@ -68,20 +77,28 @@ export default function MyNotesPage() {
         isLoading: false
       }))
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Notes fetch error:', error)
       
       // More specific error handling
       let errorMessage = 'Failed to load notes'
       
-      if (error.message.includes('Authentication required')) {
-        errorMessage = 'Please log in to view your notes'
-      } else if (error.message.includes('Network Error') || error.code === 'ERR_NETWORK') {
-        errorMessage = 'Unable to connect to server. Please check your internet connection.'
-      } else if (error.response?.status === 500) {
-        errorMessage = 'Server error. Please try again later.'
-      } else if (error.message) {
-        errorMessage = error.message
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication required')) {
+          errorMessage = 'Please log in to view your notes'
+        } else if (error.message.includes('Network Error')) {
+          errorMessage = 'Unable to connect to server. Please check your internet connection.'
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+      } else if (typeof error === 'object' && error !== null) {
+        const errorObj = error as Record<string, unknown>;
+        if (errorObj.response && typeof errorObj.response === 'object') {
+          const response = errorObj.response as Record<string, unknown>;
+          if (response.status === 500) {
+            errorMessage = 'Server error. Please try again later.'
+          }
+        }
       }
       
       setState(prev => ({
@@ -103,7 +120,8 @@ export default function MyNotesPage() {
   useEffect(() => {
     const filtered = state.notes.filter(note =>
       note.content.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-      note.selectedText?.toLowerCase().includes(state.searchQuery.toLowerCase())
+      note.selectedText?.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+      note.lessonTitle?.toLowerCase().includes(state.searchQuery.toLowerCase())
     )
     
     setState(prev => ({ ...prev, filteredNotes: filtered }))
@@ -113,7 +131,7 @@ export default function MyNotesPage() {
     setState(prev => ({ ...prev, searchQuery: e.target.value }))
   }
 
-  const handleEditNote = (note: Note) => {
+  const handleEditNote = (note: NoteWithBackendFields) => {
     setState(prev => ({ 
       ...prev, 
       editingNote: note, 
@@ -160,14 +178,16 @@ export default function MyNotesPage() {
         description: "Note updated successfully"
       })
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Update note error:', error)
       
       setState(prev => ({ ...prev, isUpdating: false }))
       
+      const errorMessage = error instanceof Error ? error.message : "Failed to update note";
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to update note",
+        description: errorMessage,
         variant: "destructive"
       })
     }
@@ -191,36 +211,30 @@ export default function MyNotesPage() {
         description: "Note deleted successfully"
       })
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Delete note error:', error)
+      
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete note";
       
       toast({
         title: "Error",
-        description: error.message || "Failed to delete note",
+        description: errorMessage,
         variant: "destructive"
       })
     }
   }
 
+  // Format date using built-in JavaScript Date methods
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     })
   }
 
-  const formatPosition = (fromChar?: number, toChar?: number) => {
-    if (fromChar !== undefined && toChar !== undefined) {
-      return `Characters ${fromChar}-${toChar}`
-    }
-    if (fromChar !== undefined) {
-      return `Position ${fromChar}`
-    }
-    return null
-  }
+
 
   if (state.isLoading) {
     return (
@@ -306,7 +320,7 @@ export default function MyNotesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search notes by content or selected text..."
+            placeholder="Search notes by content, selected text, or lesson title..."
             value={state.searchQuery}
             onChange={handleSearchChange}
             className="pl-10"
@@ -371,21 +385,22 @@ export default function MyNotesPage() {
               <CardHeader>
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1 min-w-0">
+                    {/* Lesson Title */}
+                    <h3 className="text-md font-semibold text-gray-900 mb-2">
+                      {note.lessonTitle ?? "Untitled Lesson"}
+                    </h3>
+
                     {/* Selected Text */}
                     {note.selectedText && (
-                      <div className="mb-3 p-3 bg-muted/50 rounded-lg border-l-4 border-primary">
-                        <p className="text-sm italic text-muted-foreground mb-1">Selected text:</p>
-                        <p className="text-sm">{note.selectedText}</p>
-                      </div>
+                      <p className="text-gray-600 text-sm italic mt-1 mb-3 p-2 bg-gray-50 rounded border-l-4 border-primary">
+                        "{note.selectedText}"
+                      </p>
                     )}
                     
                     {/* Note Content */}
-                    <div className="space-y-2">
-                      <CardTitle className="text-base">Your Note</CardTitle>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {note.content}
-                      </p>
-                    </div>
+                    <p className="text-gray-800 mt-2 whitespace-pre-wrap">
+                      {note.content}
+                    </p>
                   </div>
 
                   {/* Actions */}
@@ -393,8 +408,17 @@ export default function MyNotesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate(`/lessons/${note.lessonId}`)}
+                      onClick={() => {
+                        // Safely handle both lessonId and lesson_id field names
+                        const lessonId = getLessonId(note);
+                        if (lessonId) {
+                          navigate(`/lessons/${lessonId}`);
+                        } else {
+                          console.error('No lesson ID found for note:', note);
+                        }
+                      }}
                       title="Go to Lesson"
+                      disabled={!getLessonId(note)}
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
@@ -420,30 +444,27 @@ export default function MyNotesPage() {
               </CardHeader>
               
               <CardContent>
-                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  <Badge variant="outline" className="text-xs">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {formatDate(note.createdAt)}
-                  </Badge>
-                  
-                  {formatPosition(note.position, note.position) && (
-                    <Badge variant="outline" className="text-xs">
-                      <FileText className="h-3 w-3 mr-1" />
-                      {formatPosition(note.position, note.position)}
-                    </Badge>
-                  )}
-                  
-                  {note.lineNumber && (
-                    <Badge variant="outline" className="text-xs">
-                      Line {note.lineNumber}
-                    </Badge>
-                  )}
-                  
-                  {note.updatedAt !== note.createdAt && (
-                    <Badge variant="outline" className="text-xs">
-                      Updated {formatDate(note.updatedAt)}
-                    </Badge>
-                  )}
+                <div className="flex justify-between mt-3 text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    📅 {formatDate(note.createdAt)}
+                  </span>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => {
+                      const lessonId = getLessonId(note);
+                      if (lessonId) {
+                        navigate(`/lessons/${lessonId}`);
+                      } else {
+                        console.error('No lesson ID found for note:', note);
+                      }
+                    }}
+                    className="text-blue-500 underline text-xs p-0 h-auto"
+                    disabled={!getLessonId(note)}
+                  >
+                    Go to Lesson
+                  </Button>
                 </div>
               </CardContent>
             </Card>

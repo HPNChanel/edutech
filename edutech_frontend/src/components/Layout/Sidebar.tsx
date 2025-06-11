@@ -6,10 +6,11 @@ import {
   LayoutDashboard,
   BookOpen,
   FileText,
-  User,
-  Settings,
   X,
-  FolderOpen
+  FolderOpen,
+  MessageSquare,
+  Clock,
+  Target
 } from 'lucide-react'
 
 interface NavItem {
@@ -25,6 +26,21 @@ const navigation: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
+    title: 'Learning Goals',
+    href: '/goals',
+    icon: Target,
+  },
+  {
+    title: 'Focus',
+    href: '/focus',
+    icon: Clock,
+  },
+  {
+    title: 'AI Assistant',
+    href: '/chat',
+    icon: MessageSquare,
+  },
+  {
     title: 'Categories',
     href: '/categories',
     icon: FolderOpen,
@@ -38,16 +54,6 @@ const navigation: NavItem[] = [
     title: 'Notes',
     href: '/notes',
     icon: FileText,
-  },
-  {
-    title: 'Profile',
-    href: '/profile',
-    icon: User,
-  },
-  {
-    title: 'Settings',
-    href: '/settings',
-    icon: Settings,
   },
 ]
 
@@ -82,7 +88,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           const Icon = item.icon
           const isActive = location.pathname === item.href || 
                           (item.href === '/lessons' && location.pathname.startsWith('/lessons/')) ||
-                          (item.href === '/categories' && location.pathname.startsWith('/categories/'))
+                          (item.href === '/categories' && location.pathname.startsWith('/categories/')) ||
+                          (item.href === '/focus' && location.pathname.startsWith('/focus'))
           
           return (
             <Link

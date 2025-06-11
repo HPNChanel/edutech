@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Selection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .lesson-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .selection-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .selection-text {
+            background: #f0f8ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .offsets {
+            background: #e8f5e8;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+            width: 100%;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Text Selection Test</h1>
+    <p>This test validates the text selection functionality for the EduTech platform.</p>
+    
+    <div class="lesson-content">
+        <h2>Sample Lesson Content</h2>
+        <p>This is a sample paragraph to test text selection. You can select any portion of this text to see how the system captures the selected text, calculates offsets, and maintains selection state.</p>
+        
+        <p>Here is another paragraph with different content. The text selection system should work across multiple paragraphs and elements. Try selecting text that spans across different HTML elements to test the robustness of the implementation.</p>
+        
+        <h3>Code Example</h3>
+        <pre><code>function calculateOffsets(container, range) {
+    const beforeRange = document.createRange();
+    beforeRange.setStart(container, 0);
+    beforeRange.setEnd(range.startContainer, range.startOffset);
+    return beforeRange.toString().length;
+}</code></pre>
+        
+        <p>The above code demonstrates how text offsets are calculated relative to the container element. This ensures consistent positioning regardless of HTML structure.</p>
+        
+        <blockquote>
+            "Text selection is a fundamental feature for educational platforms. It enables users to highlight important concepts and create notes that are anchored to specific portions of the content."
+        </blockquote>
+        
+        <div data-block-id="block-123">
+            <p>This paragraph is inside a block with ID "block-123". The system should detect this block ID when text is selected within this element.</p>
+        </div>
+    </div>
+    
+    <div class="selection-info">
+        <h3>Selection Information</h3>
+        <div id="selectedText" class="selection-text">
+            <em>No text selected</em>
+        </div>
+        <div id="offsets" class="offsets">
+            Start: -, End: -
+        </div>
+        <div id="blockId" style="font-size: 12px; color: #666; margin: 5px 0;">
+            Block ID: <span id="blockIdValue">-</span>
+        </div>
+        <button id="createHighlight" disabled>Create Highlight</button>
+        <button id="createNote" disabled>Create Note</button>
+        <button id="clearSelection" disabled>Clear Selection</button>
+        
+        <div id="log" style="margin-top: 15px; font-size: 12px; color: #666; max-height: 150px; overflow-y: auto;">
+            <strong>Log:</strong><br>
+        </div>
+    </div>
+
+    <script>
+        // Text selection data storage
+        let currentSelection = null;
+        
+        // Log function
+        function log(message) {
+            const logElement = document.getElementById('log');
+            logElement.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // Calculate offsets relative to container
+        function calculateContentOffsets(container, range) {
+            try {
+                const beforeRange = document.createRange();
+                beforeRange.setStart(container, 0);
+                beforeRange.setEnd(range.startContainer, range.startOffset);
+                const textBefore = beforeRange.toString();
+                
+                const selectedText = range.toString();
+                const start_offset = textBefore.length;
+                const end_offset = start_offset + selectedText.length;
+                
+                return { start_offset, end_offset };
+            } catch (error) {
+                console.error('Error calculating offsets:', error);
+                return { start_offset: 0, end_offset: 0 };
+            }
+        }
+        
+        // Find block information
+        function findBlockInfo(range) {
+            try {
+                const startContainer = range.startContainer;
+                const blockElement = (startContainer.nodeType === Node.TEXT_NODE 
+                    ? startContainer.parentElement 
+                    : startContainer)?.closest('[data-block-id]');
+                    
+                return blockElement?.getAttribute('data-block-id') || null;
+            } catch (error) {
+                console.warn('Could not find block info:', error);
+                return null;
+            }
+        }
+        
+        // Capture text selection
+        function captureSelection() {
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) {
+                return null;
+            }
+            
+            const text = selection.toString().trim();
+            if (!text || text.length === 0) {
+                return null;
+            }
+            
+            const container = document.querySelector('.lesson-content');
+            if (!container) {
+                return null;
+            }
+            
+            const range = selection.getRangeAt(0);
+            const isWithinContainer = container.contains(range.commonAncestorContainer);
+            
+            if (!isWithinContainer) {
+                return null;
+            }
+            
+            const { start_offset, end_offset } = calculateContentOffsets(container, range);
+            const blockId = findBlockInfo(range);
+            
+            if (start_offset < 0 || end_offset <= start_offset) {
+                return null;
+            }
+            
+            return {
+                selectedText: text,
+                start_offset,
+                end_offset,
+                blockId,
+                range: range.cloneRange()
+            };
+        }
+        
+        // Update UI with selection data
+        function updateSelectionUI(selectionData) {
+            const selectedTextEl = document.getElementById('selectedText');
+            const offsetsEl = document.getElementById('offsets');
+            const blockIdEl = document.getElementById('blockIdValue');
+            const createHighlightBtn = document.getElementById('createHighlight');
+            const createNoteBtn = document.getElementById('createNote');
+            const clearSelectionBtn = document.getElementById('clearSelection');
+            
+            if (selectionData) {
+                selectedTextEl.innerHTML = `<strong>Selected:</strong><br>"${selectionData.selectedText}"`;
+                offsetsEl.textContent = `Start: ${selectionData.start_offset}, End: ${selectionData.end_offset}`;
+                blockIdEl.textContent = selectionData.blockId || '-';
+                
+                createHighlightBtn.disabled = false;
+                createNoteBtn.disabled = false;
+                clearSelectionBtn.disabled = false;
+                
+                log(`Text selected: "${selectionData.selectedText.substring(0, 30)}..." (${selectionData.selectedText.length} chars)`);
+                log(`Offsets: ${selectionData.start_offset}-${selectionData.end_offset}`);
+                if (selectionData.blockId) {
+                    log(`Block ID: ${selectionData.blockId}`);
+                }
+            } else {
+                selectedTextEl.innerHTML = '<em>No text selected</em>';
+                offsetsEl.textContent = 'Start: -, End: -';
+                blockIdEl.textContent = '-';
+                
+                createHighlightBtn.disabled = true;
+                createNoteBtn.disabled = true;
+                clearSelectionBtn.disabled = true;
+            }
+        }
+        
+        // Handle text selection
+        function handleTextSelection() {
+            setTimeout(() => {
+                currentSelection = captureSelection();
+                updateSelectionUI(currentSelection);
+            }, 50);
+        }
+        
+        // Clear selection
+        function clearSelection() {
+            currentSelection = null;
+            updateSelectionUI(null);
+            window.getSelection().removeAllRanges();
+            log('Selection cleared');
+        }
+        
+        // Mock API calls
+        function createHighlight() {
+            if (!currentSelection) return;
+            
+            log(`Creating highlight for: "${currentSelection.selectedText.substring(0, 30)}..."`);
+            log(`API call: POST /lessons/123/highlights`);
+            log(`Payload: { text: "${currentSelection.selectedText}", start_offset: ${currentSelection.start_offset}, end_offset: ${currentSelection.end_offset}, color: "yellow" }`);
+            
+            // Simulate success
+            setTimeout(() => {
+                log('✅ Highlight created successfully!');
+                clearSelection();
+            }, 500);
+        }
+        
+        function createNote() {
+            if (!currentSelection) return;
+            
+            const noteContent = prompt('Enter your note:');
+            if (!noteContent) return;
+            
+            log(`Creating note for: "${currentSelection.selectedText.substring(0, 30)}..."`);
+            log(`API call: POST /lessons/123/notes`);
+            log(`Payload: { content: "${noteContent}", text: "${currentSelection.selectedText}", start_offset: ${currentSelection.start_offset}, end_offset: ${currentSelection.end_offset} }`);
+            
+            // Simulate success
+            setTimeout(() => {
+                log('✅ Note created successfully!');
+                clearSelection();
+            }, 500);
+        }
+        
+        // Event listeners
+        document.addEventListener('mouseup', handleTextSelection);
+        document.getElementById('createHighlight').addEventListener('click', createHighlight);
+        document.getElementById('createNote').addEventListener('click', createNote);
+        document.getElementById('clearSelection').addEventListener('click', clearSelection);
+        
+        // Prevent selection loss on button interactions (not on input elements)
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', (e) => e.preventDefault());
+        });
+        
+        log('Text selection test initialized');
+    </script>
+</body>
+</html> 

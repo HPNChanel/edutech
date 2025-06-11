@@ -44,13 +44,13 @@ export interface LessonListParams {
 export const lessonService = {
   // Get lesson by ID
   getLessonById: async (id: string): Promise<Lesson> => {
-    const response = await api.get(`/lessons/${id}`) // ! DO NOT CHANGE THIS, IT IS USED IN BACKEND
+    const response = await api.get(`/lessons/${id}`)
     return response.data
   },
 
   // Get user's lessons
   getMyLessons: async (params?: LessonListParams): Promise<Lesson[]> => {
-    const response = await api.get('/lessons/my-lessons', { params }) // Fixed endpoint to match backend
+    const response = await api.get('/lessons/my-lessons', { params })
     return response.data
   },
 
@@ -64,24 +64,24 @@ export const lessonService = {
 
   // Create new lesson
   createLesson: async (data: LessonCreateRequest): Promise<Lesson> => {
-    const response = await api.post('/lessons', data) // ! DO NOT CHANGE THIS, IT IS USED IN BACKEND
+    const response = await api.post('/lessons', data)
     return response.data
   },
 
   // Update lesson
   updateLesson: async (id: string, data: LessonUpdateRequest): Promise<Lesson> => {
-    const response = await api.put(`/lessons/${id}`, data) // ! DO NOT CHANGE THIS, IT IS USED IN BACKEND
+    const response = await api.put(`/lessons/${id}`, data)
     return response.data
   },
 
   // Delete lesson
   deleteLesson: async (id: string): Promise<void> => {
-    await api.delete(`/lessons/${id}`) // ! DO NOT CHANGE THIS, IT IS USED IN BACKEND
+    await api.delete(`/lessons/${id}`)
   },
 
   // Get lessons
   getLessons: async (params?: LessonListParams): Promise<Lesson[]> => {
-    const response = await api.get('/lessons', { params }) // ! DO NOT CHANGE THIS, IT IS USED IN BACKEND
+    const response = await api.get('/lessons', { params })
     return response.data
   }
 }

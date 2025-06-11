@@ -1,4 +1,5 @@
 import { Menu, Bell, User, Settings, LogOut } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -16,8 +17,9 @@ interface NavbarProps {
 }
 
 export default function Navbar({ onMenuClick }: NavbarProps) {
+  const navigate = useNavigate()
   const { logout } = useAuth()
-  const { user, userName, userEmail, userAvatar } = useCurrentUser()
+  const { userName, userEmail, userAvatar } = useCurrentUser()
 
   const handleLogout = async () => {
     try {
@@ -25,6 +27,14 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
     } catch (error) {
       console.error('Logout failed:', error)
     }
+  }
+
+  const handleProfileClick = () => {
+    navigate('/profile')
+  }
+
+  const handleSettingsClick = () => {
+    navigate('/settings')
   }
 
   const getInitials = (name: string): string => {
@@ -86,11 +96,11 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleProfileClick}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSettingsClick}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>

@@ -9,11 +9,16 @@ import ForgotPassword from './pages/Auth/ForgotPassword'
 import QuizPage from './pages/QuizPage'
 import MyNotesPage from './pages/MyNotesPage'
 import CreateLessonPage from './pages/CreateLessonPage'
+import EditLessonPage from './pages/EditLessonPage'
 import CategoryPage from './pages/CategoryPage'
 import ProfilePage from './pages/ProfilePage'
 import SettingsPage from './pages/SettingsPage'
 import CategoryManagement from './pages/Admin/CategoryManagement'
+import ChatPage from './pages/ChatPage'
+import FocusPage from './pages/FocusPage'
+import LearningGoalsPage from './pages/LearningGoalsPage'
 import { Toaster } from './components/ui/toaster'
+import { Toaster as HotToaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { Skeleton } from './components/ui/skeleton'
 import { Alert, AlertDescription } from './components/ui/alert'
@@ -153,10 +158,11 @@ function AppRouter() {
       <Route path="/" element={<Layout />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="lessons/:id" element={<LessonDetailPage />} />
-        <Route path="lessons" element={<MyLessonsPage />} />
         <Route path="my-lessons" element={<MyLessonsPage />} />
         <Route path="lessons/create" element={<CreateLessonPage />} />
+        <Route path="lessons/:lessonId/edit" element={<EditLessonPage />} />
+        <Route path="lessons/:lessonId" element={<LessonDetailPage />} />
+        <Route path="lessons" element={<MyLessonsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="categories/:categoryId" element={<CategoryPage />} />
         <Route path="admin/categories" element={<CategoryManagement />} />
@@ -166,6 +172,9 @@ function AppRouter() {
 
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="chat" element={<ChatPage />} />
+        <Route path="focus" element={<FocusPage />} />
+        <Route path="goals" element={<LearningGoalsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
@@ -179,6 +188,7 @@ function App() {
       <AuthProvider>
         <AppRouter />
         <Toaster />
+        <HotToaster position="top-right" />
       </AuthProvider>
     </BrowserRouter>
   )

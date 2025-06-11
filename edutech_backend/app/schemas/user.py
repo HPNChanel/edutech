@@ -44,12 +44,14 @@ class UserRegister(BaseModel):
 class UserUpdate(UserBase):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
+    is_active: Optional[bool] = None
 
 class User(UserBase):
     model_config = ConfigDict(from_attributes=True)
     
     id: int
     is_admin: bool
+    is_active: bool
     created_at: datetime
 
 class UserLogin(BaseModel):

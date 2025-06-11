@@ -11,6 +11,7 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     is_admin = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True, nullable=False)  # Track user active status
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Add property for compatibility
@@ -28,3 +29,7 @@ class User(Base):
     notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
     highlights = relationship("Highlight", back_populates="user", cascade="all, delete-orphan")
     quizzes = relationship("Quiz", back_populates="user", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
+    focus_sessions = relationship("FocusSession", back_populates="user", cascade="all, delete-orphan")
+    focus_settings = relationship("FocusSettings", back_populates="user", cascade="all, delete-orphan")
+    learning_goals = relationship("LearningGoal", back_populates="user", cascade="all, delete-orphan")
